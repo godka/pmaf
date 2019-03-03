@@ -91,11 +91,13 @@ def main():
             time_stamp += sleep_time  # in ms
 
             # reward is video quality - rebuffer penalty - smoothness
-            reward = VIDEO_BIT_RATE[bit_rate] / M_IN_K \
-                     - REBUF_PENALTY * rebuf \
-                     - SMOOTH_PENALTY * np.abs(VIDEO_BIT_RATE[bit_rate] -
-                                               VIDEO_BIT_RATE[last_bit_rate]) / M_IN_K
+            # reward = VIDEO_BIT_RATE[bit_rate] / M_IN_K \
+            #          - REBUF_PENALTY * rebuf \
+            #          - SMOOTH_PENALTY * np.abs(VIDEO_BIT_RATE[bit_rate] -
+            #                                    VIDEO_BIT_RATE[last_bit_rate]) / M_IN_K
 
+            reward = 0.86937331 * video_chunk_vmaf - 6.38260045 * rebuf + 0.08749731 * \
+                np.abs(video_chunk_vmaf - last_chunk_vmaf) -5.0223528133461315
             r_batch.append(reward)
 
             last_bit_rate = bit_rate

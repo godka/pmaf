@@ -248,11 +248,12 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
                 last_chunk_vmaf = video_chunk_vmaf
             # -- linear reward --
             # reward is video quality - rebuffer penalty - smoothness
-            reward = VIDEO_BIT_RATE[bit_rate] / M_IN_K \
-                     - REBUF_PENALTY * rebuf \
-                     - SMOOTH_PENALTY * np.abs(VIDEO_BIT_RATE[bit_rate] -
-                                               VIDEO_BIT_RATE[last_bit_rate]) / M_IN_K
-
+            # reward = VIDEO_BIT_RATE[bit_rate] / M_IN_K \
+            #          - REBUF_PENALTY * rebuf \
+            #          - SMOOTH_PENALTY * np.abs(VIDEO_BIT_RATE[bit_rate] -
+            #                                    VIDEO_BIT_RATE[last_bit_rate]) / M_IN_K
+            reward = 0.86937331 * video_chunk_vmaf - 6.38260045 * rebuf + 0.08749731 * \
+                np.abs(video_chunk_vmaf - last_chunk_vmaf) -5.0223528133461315
             # -- log scale reward --
             # log_bit_rate = np.log(VIDEO_BIT_RATE[bit_rate] / float(VIDEO_BIT_RATE[-1]))
             # log_last_bit_rate = np.log(VIDEO_BIT_RATE[last_bit_rate] / float(VIDEO_BIT_RATE[-1]))

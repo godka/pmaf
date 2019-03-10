@@ -23,7 +23,7 @@ DEFAULT_QUALITY = 1  # default video quality without agent
 RANDOM_SEED = 42
 RAND_RANGE = 1000
 LOG_FILE = './test_results/log_sim_rl'
-TEST_TRACES = './cooked_test_traces/'
+TEST_TRACES = './4Glogs/'
 # log in format of time_stamp bit_rate buffer_size rebuffer_time chunk_size download_time reward
 NN_MODEL = sys.argv[1]
 
@@ -96,8 +96,12 @@ def main():
             #          - SMOOTH_PENALTY * np.abs(VIDEO_BIT_RATE[bit_rate] -
             #                                    VIDEO_BIT_RATE[last_bit_rate]) / M_IN_K
 
-            reward = 0.86937331 * video_chunk_vmaf - 6.38260045 * rebuf + 0.08749731 * \
-                np.abs(video_chunk_vmaf - last_chunk_vmaf) -5.0223528133461315
+            #reward = 0.86937331 * video_chunk_vmaf - 6.38260045 * rebuf + 0.08749731 * \
+            #    np.abs(video_chunk_vmaf - last_chunk_vmaf) -5.0223528133461315
+            reward = 0.8469011 * video_chunk_vmaf - 28.79591348 * rebuf + 0.29797156 * \
+                np.abs(np.maximum(video_chunk_vmaf - last_chunk_vmaf, 0.)) - 1.06099887 * \
+                np.abs(np.minimum(video_chunk_vmaf - last_chunk_vmaf, 0.)) - \
+                2.661618558192494
             r_batch.append(reward)
 
             last_bit_rate = bit_rate

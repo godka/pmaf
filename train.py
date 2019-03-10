@@ -41,7 +41,7 @@ def testing(epoch, nn_model, log_file):
     os.system('mkdir ' + TEST_LOG_FOLDER)
     
     # run test script
-    os.system('python rl_test.py ' + nn_model + '&')
+    os.system('python rl_test.py ' + nn_model)
     
     # append test performance to the log
     rewards = []
@@ -252,8 +252,12 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
             #          - REBUF_PENALTY * rebuf \
             #          - SMOOTH_PENALTY * np.abs(VIDEO_BIT_RATE[bit_rate] -
             #                                    VIDEO_BIT_RATE[last_bit_rate]) / M_IN_K
-            reward = 0.86937331 * video_chunk_vmaf - 6.38260045 * rebuf + 0.08749731 * \
-                np.abs(video_chunk_vmaf - last_chunk_vmaf) -5.0223528133461315
+            #reward = 0.86937331 * video_chunk_vmaf - 6.38260045 * rebuf + 0.08749731 * \
+            #    np.abs(video_chunk_vmaf - last_chunk_vmaf) -5.0223528133461315
+            reward = 0.8469011 * video_chunk_vmaf - 28.79591348 * rebuf + 0.29797156 * \
+                np.abs(np.maximum(video_chunk_vmaf - last_chunk_vmaf, 0.)) - 1.06099887 * \
+                np.abs(np.minimum(video_chunk_vmaf - last_chunk_vmaf, 0.)) - \
+                2.661618558192494
             # -- log scale reward --
             # log_bit_rate = np.log(VIDEO_BIT_RATE[bit_rate] / float(VIDEO_BIT_RATE[-1]))
             # log_last_bit_rate = np.log(VIDEO_BIT_RATE[last_bit_rate] / float(VIDEO_BIT_RATE[-1]))

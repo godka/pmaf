@@ -18,7 +18,7 @@ ACTOR_LR_RATE = 0.0001
 CRITIC_LR_RATE = 0.001
 NUM_AGENTS = 16
 TRAIN_SEQ_LEN = 100  # take as a train batch
-MODEL_SAVE_INTERVAL = 150
+MODEL_SAVE_INTERVAL = 300
 VIDEO_BIT_RATE = [300, 750, 1200, 1850, 2850, 4300]  # Kbps
 HD_REWARD = [1, 2, 3, 12, 15, 20]
 BUFFER_NORM_FACTOR = 10.0
@@ -96,7 +96,7 @@ def central_agent(net_params_queues, exp_queues):
                                    state_dim=[S_INFO, S_LEN],
                                    learning_rate=CRITIC_LR_RATE)
         rew = disc.DiscNetwork(
-            sess, state_dim=[3, 5], learning_rate=ACTOR_LR_RATE)
+            sess, state_dim=[3, 5], learning_rate=ACTOR_LR_RATE / 10.)
 
         summary_ops, summary_vars = a3c.build_summaries()
 
@@ -179,7 +179,7 @@ def central_agent(net_params_queues, exp_queues):
             rew.train(np.stack(d_batch, axis=0))
             # log training information
             epoch += 1
-            avg_reward = total_reward / total_agents
+            avg_reward = total_reward / total_agents / 48.
             avg_td_loss = total_td_loss / total_batch_len
             avg_entropy = total_entropy / total_batch_len
 

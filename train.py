@@ -77,6 +77,8 @@ def testing(epoch, nn_model, log_file):
                    str(rewards_max) + '\n')
     log_file.flush()
 
+    return rewards_mean
+
 
 def central_agent(net_params_queues, exp_queues):
 
@@ -112,7 +114,7 @@ def central_agent(net_params_queues, exp_queues):
             print("Model restored.")
 
         epoch = 0
-
+        avg_test = 0.
         # assemble experiences from agents, compute the gradients
         while True:
             # synchronize the network parameters of work agent
@@ -188,23 +190,33 @@ def central_agent(net_params_queues, exp_queues):
                          ' Avg_reward: ' + str(avg_reward) +
                          ' Avg_entropy: ' + str(avg_entropy))
 
-            summary_str = sess.run(summary_ops, feed_dict={
-                summary_vars[0]: avg_td_loss,
-                summary_vars[1]: avg_reward,
-                summary_vars[2]: avg_entropy
-            })
+            #summary_str = sess.run(summary_ops, feed_dict={
+            #    summary_vars[0]: avg_td_loss,
+            #    summary_vars[1]: avg_reward,
+            #    summary_vars[2]: avg_entropy
+            #})
 
-            writer.add_summary(summary_str, epoch)
-            writer.flush()
+            #writer.add_summary(summary_str, epoch)
+            #writer.flush()
 
             if epoch % MODEL_SAVE_INTERVAL == 0:
                 # Save the neural net parameters to disk.
                 save_path = saver.save(sess, SUMMARY_DIR + "/nn_model_ep_" +
                                        str(epoch) + ".ckpt")
                 logging.info("Model saved in file: " + save_path)
-                testing(epoch,
+                avg_test = testing(epoch,
                         SUMMARY_DIR + "/nn_model_ep_" + str(epoch) + ".ckpt",
                         test_log_file)
+            summary_str = sess.run(summary_ops, feed_dict={
+                summary_vars[0]: avg_td_loss,
+                summary_vars[1]: avg_reward,
+                summary_vars[2]: avg_entropy,
+                summary_vars[3]: avg_test
+            })
+
+            writer.add_summary(summary_str, epoch)
+            writer.flush()
+
 
 
 def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue):

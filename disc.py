@@ -42,7 +42,7 @@ class DiscNetwork(object):
                 self.network_params[idx].assign(param))
 
         # Compute loss functions
-        self.obj = -tf.reduce_mean(tf.log(self.real_out + EPS)) + \
+        self.obj = -tf.reduce_mean(tf.log(self.real_out + EPS)) - \
             tf.reduce_mean(tf.log(1. - self.fake_out + EPS))
 
         # Optimization Op

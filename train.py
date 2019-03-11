@@ -221,7 +221,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
                                    state_dim=[S_INFO, S_LEN],
                                    learning_rate=CRITIC_LR_RATE)
         rew = disc.DiscNetwork(
-            sess, state_dim=[3, 5], learning_rate=ACTOR_LR_RATE)
+            sess, state_dim=[3, 5], learning_rate=ACTOR_LR_RATE / 10.)
         # initial synchronization of the network parameters from the coordinator
         actor_net_params, critic_net_params, rew_net_params = net_params_queue.get()
         actor.set_network_params(actor_net_params)
@@ -239,10 +239,12 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
         s_batch = [np.zeros((S_INFO, S_LEN))]
         a_batch = [action_vec]
         r_batch = []
-        d_batch = [np.zeros((3, 5))]
+        d_batch = None #[np.zeros((3, 5))]
         entropy_record = []
-
+        rebuf_tmp = np.zeros((5))
         time_stamp = 0
+        chunk_index = 0
+
         while True:  # experience video streaming forever
 
             # the action is from the last decision
@@ -251,19 +253,27 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
                 video_chunk_size, next_video_chunk_sizes, next_video_chunk_vmaf, \
                 end_of_video, video_chunk_remain, video_chunk_vmaf = \
                 net_env.get_video_chunk(bit_rate)
-
+            
+            chunk_index += 1
             time_stamp += delay  # in ms
             time_stamp += sleep_time  # in ms
 
             if last_chunk_vmaf is None:
                 last_chunk_vmaf = video_chunk_vmaf
 
+            if d_batch is None:
+                d_batch = [np.zeros((3,5))]
+                d_batch[0][0,:] = video_chunk_vmaf / 100.
+            
             d_state = np.array(d_batch[-1], copy=True)
             d_state = np.roll(d_state, -1, axis=1)
             # caculate d_state
             d_state[0, -1] = video_chunk_vmaf / 100.
-            d_state[1, -1] = rebuf / BUFFER_NORM_FACTOR
+            #d_state[1, -1] = rebuf / BUFFER_NORM_FACTOR
+            rebuf_tmp[-1] = rebuf / BUFFER_NORM_FACTOR
+            d_state[1, -1] = np.sum(rebuf_tmp) / np.minimum(5., chunk_index)
             d_state[2, -1] = mos_on_demand
+
             reward = rew.predict(np.reshape(d_state, (-1, 3, 5)))
             reward = reward[0, 0]
             d_batch.append(d_state)
@@ -346,6 +356,8 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
                 bit_rate = DEFAULT_QUALITY  # use the default action here
                 mos_on_demand = np.random.rand()
                 last_chunk_vmaf = None
+                chunk_index = 0
+                rebuf_tmp = np.zeros((5))
 
                 action_vec = np.zeros(A_DIM)
                 action_vec[bit_rate] = 1

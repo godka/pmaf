@@ -154,10 +154,10 @@ def main():
                 actor_gradient_batch.append(actor_gradient)
                 critic_gradient_batch.append(critic_gradient)
 
-                print "===="
-                print "Epoch", epoch
-                print "TD_loss", td_loss, "Avg_reward", np.mean(r_batch), "Avg_entropy", np.mean(entropy_record)
-                print "===="
+                print("====")
+                print("Epoch", epoch)
+                print("TD_loss", td_loss, "Avg_reward", np.mean(r_batch), "Avg_entropy", np.mean(entropy_record))
+                print("====")
 
                 summary_str = sess.run(summary_ops, feed_dict={
                     summary_vars[0]: td_loss,
@@ -183,7 +183,7 @@ def main():
                     # actor.apply_gradients(assembled_actor_gradient)
                     # critic.apply_gradients(assembled_critic_gradient)
 
-                    for i in xrange(len(actor_gradient_batch)):
+                    for i in range(len(actor_gradient_batch)):
                         actor.apply_gradients(actor_gradient_batch[i])
                         critic.apply_gradients(critic_gradient_batch[i])
 
@@ -195,7 +195,7 @@ def main():
                         # Save the neural net parameters to disk.
                         save_path = saver.save(sess, SUMMARY_DIR + "/nn_model_ep_" +
                                                str(epoch) + ".ckpt")
-                        print("Model saved in file: %s" % save_path)
+                        print(("Model saved in file: %s" % save_path))
 
                 del s_batch[:]
                 del a_batch[:]

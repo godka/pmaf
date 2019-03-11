@@ -95,8 +95,8 @@ class Environment:
         delay *= MILLISECONDS_IN_SECOND
         delay += LINK_RTT
 
-	# add a multiplicative noise to the delay
-	delay *= np.random.uniform(NOISE_LOW, NOISE_HIGH)
+        # add a multiplicative noise to the delay
+        delay *= np.random.uniform(NOISE_LOW, NOISE_HIGH)
 
         # rebuffer time
         rebuf = np.maximum(delay - self.buffer_size, 0.0)
@@ -160,7 +160,7 @@ class Environment:
             self.last_mahimahi_time = self.cooked_time[self.mahimahi_ptr - 1]
 
         next_video_chunk_sizes = []
-        for i in xrange(BITRATE_LEVELS):
+        for i in range(BITRATE_LEVELS):
             next_video_chunk_sizes.append(self.video_size[i][self.video_chunk_counter])
 
         next_video_chunk_vmaf = []

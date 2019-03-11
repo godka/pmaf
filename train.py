@@ -1,23 +1,25 @@
+import disc
+import load_trace
+import a3c
+import env
+import tensorflow as tf
 import os
 import logging
 import numpy as np
 import multiprocessing as mp
-os.environ['CUDA_VISIBLE_DEVICES']=''
-import tensorflow as tf
-import env
-import a3c
-import load_trace
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 
-S_INFO = 7  # bit_rate, buffer_size, next_chunk_size, bandwidth_measurement(throughput and time), chunk_til_video_end
+# bit_rate, buffer_size, next_chunk_size, bandwidth_measurement(throughput and time), chunk_til_video_end
+S_INFO = 8
 S_LEN = 8  # take how many frames in the past
 A_DIM = 6
 ACTOR_LR_RATE = 0.0001
 CRITIC_LR_RATE = 0.001
-NUM_AGENTS = 16
+NUM_AGENTS = 4
 TRAIN_SEQ_LEN = 100  # take as a train batch
 MODEL_SAVE_INTERVAL = 150
-VIDEO_BIT_RATE = [300,750,1200,1850,2850,4300]  # Kbps
+VIDEO_BIT_RATE = [300, 750, 1200, 1850, 2850, 4300]  # Kbps
 HD_REWARD = [1, 2, 3, 12, 15, 20]
 BUFFER_NORM_FACTOR = 10.0
 CHUNK_TIL_VIDEO_END_CAP = 48.0
@@ -39,10 +41,10 @@ def testing(epoch, nn_model, log_file):
     # clean up the test results folder
     os.system('rm -r ' + TEST_LOG_FOLDER)
     os.system('mkdir ' + TEST_LOG_FOLDER)
-    
+
     # run test script
     os.system('python rl_test.py ' + nn_model)
-    
+
     # append test performance to the log
     rewards = []
     test_log_files = os.listdir(TEST_LOG_FOLDER)
@@ -85,7 +87,7 @@ def central_agent(net_params_queues, exp_queues):
                         filemode='w',
                         level=logging.INFO)
 
-    with tf.Session() as sess, open(LOG_FILE + '_test', 'wb') as test_log_file:
+    with tf.Session() as sess, open(LOG_FILE + '_test', 'w') as test_log_file:
 
         actor = a3c.ActorNetwork(sess,
                                  state_dim=[S_INFO, S_LEN], action_dim=A_DIM,
@@ -93,11 +95,14 @@ def central_agent(net_params_queues, exp_queues):
         critic = a3c.CriticNetwork(sess,
                                    state_dim=[S_INFO, S_LEN],
                                    learning_rate=CRITIC_LR_RATE)
+        rew = disc.DiscNetwork(
+            sess, state_dim=[3, 5], learning_rate=ACTOR_LR_RATE)
 
         summary_ops, summary_vars = a3c.build_summaries()
 
         sess.run(tf.global_variables_initializer())
-        writer = tf.summary.FileWriter(SUMMARY_DIR, sess.graph)  # training monitor
+        writer = tf.summary.FileWriter(
+            SUMMARY_DIR, sess.graph)  # training monitor
         saver = tf.train.Saver(max_to_keep=10000)  # save neural net parameters
 
         # restore neural net parameters
@@ -113,8 +118,9 @@ def central_agent(net_params_queues, exp_queues):
             # synchronize the network parameters of work agent
             actor_net_params = actor.get_network_params()
             critic_net_params = critic.get_network_params()
-            for i in xrange(NUM_AGENTS):
-                net_params_queues[i].put([actor_net_params, critic_net_params])
+            rew_net_params = rew.get_network_params()
+            for i in range(NUM_AGENTS):
+                net_params_queues[i].put([actor_net_params, critic_net_params, rew_net_params])
                 # Note: this is synchronous version of the parallel training,
                 # which is easier to understand and probe. The framework can be
                 # fairly easily modified to support asynchronous training.
@@ -129,21 +135,22 @@ def central_agent(net_params_queues, exp_queues):
             total_reward = 0.0
             total_td_loss = 0.0
             total_entropy = 0.0
-            total_agents = 0.0 
+            total_agents = 0.0
 
             # assemble experiences from the agents
             actor_gradient_batch = []
             critic_gradient_batch = []
 
-            for i in xrange(NUM_AGENTS):
-                s_batch, a_batch, r_batch, terminal, info = exp_queues[i].get()
+            for i in range(NUM_AGENTS):
+                s_batch, a_batch, r_batch, d_batch, terminal, info = exp_queues[i].get()
 
                 actor_gradient, critic_gradient, td_batch = \
                     a3c.compute_gradients(
-                        epoch=epoch, 
+                        epoch=epoch,
                         s_batch=np.stack(s_batch, axis=0),
                         a_batch=np.vstack(a_batch),
                         r_batch=np.vstack(r_batch),
+                        #d_batch=np.vstack(d_batch),
                         terminal=terminal, actor=actor, critic=critic)
 
                 actor_gradient_batch.append(actor_gradient)
@@ -166,13 +173,13 @@ def central_agent(net_params_queues, exp_queues):
             #             assembled_critic_gradient[j] += critic_gradient_batch[i][j]
             # actor.apply_gradients(assembled_actor_gradient)
             # critic.apply_gradients(assembled_critic_gradient)
-            for i in xrange(len(actor_gradient_batch)):
+            for i in range(len(actor_gradient_batch)):
                 actor.apply_gradients(actor_gradient_batch[i])
                 critic.apply_gradients(critic_gradient_batch[i])
-
+            rew.train(np.stack(d_batch, axis=0))
             # log training information
             epoch += 1
-            avg_reward = total_reward  / total_agents
+            avg_reward = total_reward / total_agents
             avg_td_loss = total_td_loss / total_batch_len
             avg_entropy = total_entropy / total_batch_len
 
@@ -195,9 +202,9 @@ def central_agent(net_params_queues, exp_queues):
                 save_path = saver.save(sess, SUMMARY_DIR + "/nn_model_ep_" +
                                        str(epoch) + ".ckpt")
                 logging.info("Model saved in file: " + save_path)
-                testing(epoch, 
-                    SUMMARY_DIR + "/nn_model_ep_" + str(epoch) + ".ckpt", 
-                    test_log_file)
+                testing(epoch,
+                        SUMMARY_DIR + "/nn_model_ep_" + str(epoch) + ".ckpt",
+                        test_log_file)
 
 
 def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue):
@@ -206,21 +213,24 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
                               all_cooked_bw=all_cooked_bw,
                               random_seed=agent_id)
 
-    with tf.Session() as sess, open(LOG_FILE + '_agent_' + str(agent_id), 'wb') as log_file:
+    with tf.Session() as sess, open(LOG_FILE + '_agent_' + str(agent_id), 'w') as log_file:
         actor = a3c.ActorNetwork(sess,
                                  state_dim=[S_INFO, S_LEN], action_dim=A_DIM,
                                  learning_rate=ACTOR_LR_RATE)
         critic = a3c.CriticNetwork(sess,
                                    state_dim=[S_INFO, S_LEN],
                                    learning_rate=CRITIC_LR_RATE)
-
+        rew = disc.DiscNetwork(
+            sess, state_dim=[3, 5], learning_rate=ACTOR_LR_RATE)
         # initial synchronization of the network parameters from the coordinator
-        actor_net_params, critic_net_params = net_params_queue.get()
+        actor_net_params, critic_net_params, rew_net_params = net_params_queue.get()
         actor.set_network_params(actor_net_params)
         critic.set_network_params(critic_net_params)
+        rew.set_network_params(rew_net_params)
 
         last_bit_rate = DEFAULT_QUALITY
         bit_rate = DEFAULT_QUALITY
+        mos_on_demand = np.random.rand()
         last_chunk_vmaf = None
 
         action_vec = np.zeros(A_DIM)
@@ -229,6 +239,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
         s_batch = [np.zeros((S_INFO, S_LEN))]
         a_batch = [action_vec]
         r_batch = []
+        d_batch = [np.zeros((3, 5))]
         entropy_record = []
 
         time_stamp = 0
@@ -237,8 +248,8 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
             # the action is from the last decision
             # this is to make the framework similar to the real
             delay, sleep_time, buffer_size, rebuf, \
-            video_chunk_size, next_video_chunk_sizes, next_video_chunk_vmaf, \
-            end_of_video, video_chunk_remain, video_chunk_vmaf = \
+                video_chunk_size, next_video_chunk_sizes, next_video_chunk_vmaf, \
+                end_of_video, video_chunk_remain, video_chunk_vmaf = \
                 net_env.get_video_chunk(bit_rate)
 
             time_stamp += delay  # in ms
@@ -246,59 +257,50 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
 
             if last_chunk_vmaf is None:
                 last_chunk_vmaf = video_chunk_vmaf
-            # -- linear reward --
-            # reward is video quality - rebuffer penalty - smoothness
-            # reward = VIDEO_BIT_RATE[bit_rate] / M_IN_K \
-            #          - REBUF_PENALTY * rebuf \
-            #          - SMOOTH_PENALTY * np.abs(VIDEO_BIT_RATE[bit_rate] -
-            #                                    VIDEO_BIT_RATE[last_bit_rate]) / M_IN_K
-            #reward = 0.86937331 * video_chunk_vmaf - 6.38260045 * rebuf + 0.08749731 * \
-            #    np.abs(video_chunk_vmaf - last_chunk_vmaf) -5.0223528133461315
-            reward = 0.8469011 * video_chunk_vmaf - 28.79591348 * rebuf + 0.29797156 * \
-                np.abs(np.maximum(video_chunk_vmaf - last_chunk_vmaf, 0.)) - 1.06099887 * \
-                np.abs(np.minimum(video_chunk_vmaf - last_chunk_vmaf, 0.)) - \
-                2.661618558192494
-            # -- log scale reward --
-            # log_bit_rate = np.log(VIDEO_BIT_RATE[bit_rate] / float(VIDEO_BIT_RATE[-1]))
-            # log_last_bit_rate = np.log(VIDEO_BIT_RATE[last_bit_rate] / float(VIDEO_BIT_RATE[-1]))
 
-            # reward = log_bit_rate \
-            #          - REBUF_PENALTY * rebuf \
-            #          - SMOOTH_PENALTY * np.abs(log_bit_rate - log_last_bit_rate)
-
-            # -- HD reward --
-            # reward = HD_REWARD[bit_rate] \
-            #          - REBUF_PENALTY * rebuf \
-            #          - SMOOTH_PENALTY * np.abs(HD_REWARD[bit_rate] - HD_REWARD[last_bit_rate])
-
+            d_state = np.array(d_batch[-1], copy=True)
+            d_state = np.roll(d_state, -1, axis=1)
+            # caculate d_state
+            d_state[0, -1] = video_chunk_vmaf / 100.
+            d_state[1, -1] = rebuf / BUFFER_NORM_FACTOR
+            d_state[2, -1] = mos_on_demand
+            reward = rew.predict(np.reshape(d_state, (-1, 3, 5)))
+            reward = reward[0, 0]
+            d_batch.append(d_state)
             r_batch.append(reward)
 
             last_bit_rate = bit_rate
             last_chunk_vmaf = video_chunk_vmaf
 
             # retrieve previous state
-            if len(s_batch) == 0:
-                state = [np.zeros((S_INFO, S_LEN))]
-            else:
-                state = np.array(s_batch[-1], copy=True)
+            # if len(s_batch) == 0:
+            #    state = [np.zeros((S_INFO, S_LEN))]
+            # else:
+            state = np.array(s_batch[-1], copy=True)
 
             # dequeue history record
             state = np.roll(state, -1, axis=1)
 
             # this should be S_INFO number of terms
-            #state[0, -1] = VIDEO_BIT_RATE[bit_rate] / float(np.max(VIDEO_BIT_RATE))  # last quality
+            # state[0, -1] = VIDEO_BIT_RATE[bit_rate] / float(np.max(VIDEO_BIT_RATE))  # last quality
             state[0, -1] = video_chunk_vmaf / 100.
             state[1, -1] = buffer_size / BUFFER_NORM_FACTOR  # 10 sec
-            state[2, -1] = float(video_chunk_size) / float(delay) / M_IN_K  # kilo byte / ms
+            state[2, -1] = float(video_chunk_size) / \
+                float(delay) / M_IN_K  # kilo byte / ms
             state[3, -1] = float(delay) / M_IN_K / BUFFER_NORM_FACTOR  # 10 sec
-            state[4, :A_DIM] = np.array(next_video_chunk_sizes) / M_IN_K / M_IN_K  # mega byte
-            state[5, :A_DIM] = np.array(next_video_chunk_vmaf) / 100.  # mega byte
-            state[6, -1] = np.minimum(video_chunk_remain, CHUNK_TIL_VIDEO_END_CAP) / float(CHUNK_TIL_VIDEO_END_CAP)
+            state[4, :A_DIM] = np.array(
+                next_video_chunk_sizes) / M_IN_K / M_IN_K  # mega byte
+            state[5, :A_DIM] = np.array(
+                next_video_chunk_vmaf) / 100.  # mega byte
+            state[6, -1] = np.minimum(video_chunk_remain,
+                                      CHUNK_TIL_VIDEO_END_CAP) / float(CHUNK_TIL_VIDEO_END_CAP)
+            state[7, -1] = mos_on_demand
 
             # compute action probability vector
             action_prob = actor.predict(np.reshape(state, (1, S_INFO, S_LEN)))
             action_cumsum = np.cumsum(action_prob)
-            bit_rate = (action_cumsum > np.random.randint(1, RAND_RANGE) / float(RAND_RANGE)).argmax()
+            bit_rate = (action_cumsum > np.random.randint(
+                1, RAND_RANGE) / float(RAND_RANGE)).argmax()
             # Note: we need to discretize the probability into 1/RAND_RANGE steps,
             # because there is an intrinsic discrepancy in passing single state and batch states
 
@@ -319,25 +321,30 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
                 exp_queue.put([s_batch[1:],  # ignore the first chuck
                                a_batch[1:],  # since we don't have the
                                r_batch[1:],  # control over it
+                               d_batch[1:],
                                end_of_video,
                                {'entropy': entropy_record}])
 
                 # synchronize the network parameters from the coordinator
-                actor_net_params, critic_net_params = net_params_queue.get()
+                actor_net_params, critic_net_params, rew_net_params = net_params_queue.get()
                 actor.set_network_params(actor_net_params)
                 critic.set_network_params(critic_net_params)
+                rew.set_network_params(rew_net_params)
 
                 del s_batch[:]
                 del a_batch[:]
                 del r_batch[:]
+                del d_batch[:]
                 del entropy_record[:]
 
-                log_file.write('\n')  # so that in the log we know where video ends
+                # so that in the log we know where video ends
+                log_file.write('\n')
 
             # store the state and action into batches
             if end_of_video:
                 last_bit_rate = DEFAULT_QUALITY
                 bit_rate = DEFAULT_QUALITY  # use the default action here
+                mos_on_demand = np.random.rand()
                 last_chunk_vmaf = None
 
                 action_vec = np.zeros(A_DIM)
@@ -345,6 +352,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
 
                 s_batch.append(np.zeros((S_INFO, S_LEN)))
                 a_batch.append(action_vec)
+                d_batch.append(np.zeros((3, 5)))
 
             else:
                 s_batch.append(state)
@@ -366,7 +374,7 @@ def main():
     # inter-process communication queues
     net_params_queues = []
     exp_queues = []
-    for i in xrange(NUM_AGENTS):
+    for i in range(NUM_AGENTS):
         net_params_queues.append(mp.Queue(1))
         exp_queues.append(mp.Queue(1))
 
@@ -378,12 +386,12 @@ def main():
 
     all_cooked_time, all_cooked_bw, _ = load_trace.load_trace(TRAIN_TRACES)
     agents = []
-    for i in xrange(NUM_AGENTS):
+    for i in range(NUM_AGENTS):
         agents.append(mp.Process(target=agent,
                                  args=(i, all_cooked_time, all_cooked_bw,
                                        net_params_queues[i],
                                        exp_queues[i])))
-    for i in xrange(NUM_AGENTS):
+    for i in range(NUM_AGENTS):
         agents[i].start()
 
     # wait unit training is done

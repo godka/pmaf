@@ -101,7 +101,7 @@ while time < time_length:
         cnt = T_s
     gaus_val = max(0.1, bitrate_states_low_var[current_state] + noise)
     cnt -= 1
-    print str(time) + " " + str(gaus_val)
+    print(str(time) + " " + str(gaus_val))
     next_vals = transition(current_state, current_variance)
     if current_state != next_vals[0]:
         cnt = 0

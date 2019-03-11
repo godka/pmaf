@@ -1,6 +1,6 @@
 import os
 import sys
-os.environ['CUDA_VISIBLE_DEVICES']=''
+os.environ['CUDA_VISIBLE_DEVICES']='-1'
 import numpy as np
 import tensorflow as tf
 import load_trace
@@ -8,7 +8,7 @@ import a3c
 import fixed_env as env
 
 
-S_INFO = 7  # bit_rate, buffer_size, next_chunk_size, bandwidth_measurement(throughput and time), chunk_til_video_end
+S_INFO = 8  # bit_rate, buffer_size, next_chunk_size, bandwidth_measurement(throughput and time), chunk_til_video_end
 S_LEN = 8  # take how many frames in the past
 A_DIM = 6
 ACTOR_LR_RATE = 0.0001
@@ -40,7 +40,7 @@ def main():
                               all_cooked_bw=all_cooked_bw)
 
     log_path = LOG_FILE + '_' + all_file_names[net_env.trace_idx]
-    log_file = open(log_path, 'wb')
+    log_file = open(log_path, 'w')
 
     with tf.Session() as sess:
 
@@ -134,6 +134,7 @@ def main():
             state[4, :A_DIM] = np.array(next_video_chunk_sizes) / M_IN_K / M_IN_K  # mega byte
             state[5, :A_DIM] = np.array(next_video_chunk_vmaf) / 100.  # mega byte
             state[6, -1] = np.minimum(video_chunk_remain, CHUNK_TIL_VIDEO_END_CAP) / float(CHUNK_TIL_VIDEO_END_CAP)
+            state[7, -1] = np.random.uniform(0.95, 0.99)
 
             action_prob = actor.predict(np.reshape(state, (1, S_INFO, S_LEN)))
             action_cumsum = np.cumsum(action_prob)
@@ -170,7 +171,7 @@ def main():
                     break
 
                 log_path = LOG_FILE + '_' + all_file_names[net_env.trace_idx]
-                log_file = open(log_path, 'wb')
+                log_file = open(log_path, 'w')
 
 
 if __name__ == '__main__':

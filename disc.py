@@ -15,7 +15,7 @@ class DiscNetwork(object):
         self.sess = sess
         self.s_dim = state_dim
         self.lr_rate = learning_rate
-        self.batch_size = 64
+        self.batch_size = 128
         # initalized only in the optimizing process.
         self.generate_sample()
 
@@ -90,7 +90,7 @@ class DiscNetwork(object):
             _index += sample_size
 
     def generate_sample(self):
-        print('generating real data...')
+        #print('generating real data...')
         f = h5py.File('baseline.hdf5', 'r')
         self.real_sample_pool = np.array(f['real'])
         f.close()

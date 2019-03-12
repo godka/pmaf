@@ -28,7 +28,7 @@ class ActorNetwork(object):
         #    return 0.03
         #else:
         #    return 0.01
-        return np.clip(step / 10000., 0.03, 5.)
+        return np.clip(step / 10000., 0.03, 0.5)
         
     def __init__(self, sess, state_dim, action_dim, learning_rate):
         self.sess = sess

@@ -18,7 +18,7 @@ ACTOR_LR_RATE = 0.0001
 CRITIC_LR_RATE = 0.001
 NUM_AGENTS = 16
 TRAIN_SEQ_LEN = 100  # take as a train batch
-MODEL_SAVE_INTERVAL = 300
+MODEL_SAVE_INTERVAL = 100
 VIDEO_BIT_RATE = [300, 750, 1200, 1850, 2850, 4300]  # Kbps
 HD_REWARD = [1, 2, 3, 12, 15, 20]
 BUFFER_NORM_FACTOR = 10.0
@@ -198,8 +198,10 @@ def central_agent(net_params_queues, exp_queues):
 
             #writer.add_summary(summary_str, epoch)
             #writer.flush()
+            #if epoch % 10 == 0:
+            #    rew.train(np.stack(d_batch, axis=0))
 
-            if epoch % MODEL_SAVE_INTERVAL == 0:
+            if (epoch - 1) % MODEL_SAVE_INTERVAL == 0:
                 # Save the neural net parameters to disk.
                 save_path = saver.save(sess, SUMMARY_DIR + "/nn_model_ep_" +
                                        str(epoch) + ".ckpt")
@@ -207,6 +209,8 @@ def central_agent(net_params_queues, exp_queues):
                 avg_test = testing(epoch,
                         SUMMARY_DIR + "/nn_model_ep_" + str(epoch) + ".ckpt",
                         test_log_file)
+                #rew.train(np.stack(d_batch, axis=0))
+
             summary_str = sess.run(summary_ops, feed_dict={
                 summary_vars[0]: avg_td_loss,
                 summary_vars[1]: avg_reward,

@@ -237,7 +237,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
                                    state_dim=[S_INFO, S_LEN],
                                    learning_rate=CRITIC_LR_RATE)
         rew = disc.DiscNetwork(
-            sess, state_dim=[3, 5], learning_rate=ACTOR_LR_RATE / 10.)
+            sess, state_dim=[3], learning_rate=ACTOR_LR_RATE / 10.)
         # initial synchronization of the network parameters from the coordinator
         actor_net_params, critic_net_params, rew_net_params = net_params_queue.get()
         actor.set_network_params(actor_net_params)
@@ -255,7 +255,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
         s_batch = [np.zeros((S_INFO, S_LEN))]
         a_batch = [action_vec]
         r_batch = []
-        d_batch = None #[np.zeros((3, 5))]
+        d_batch = [np.zeros((3))]
         entropy_record = []
         rebuf_tmp = np.zeros((5))
         time_stamp = 0
@@ -277,20 +277,13 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
             if last_chunk_vmaf is None:
                 last_chunk_vmaf = video_chunk_vmaf
 
-            if d_batch is None:
-                d_batch = [np.zeros((3,5))]
-                d_batch[0][0,:] = video_chunk_vmaf / 100.
-            
-            d_state = np.array(d_batch[-1], copy=True)
-            d_state = np.roll(d_state, -1, axis=1)
+            d_state = np.zeros((3))
             # caculate d_state
-            d_state[0, -1] = video_chunk_vmaf / 100.
-            #d_state[1, -1] = rebuf / BUFFER_NORM_FACTOR
-            rebuf_tmp[-1] = rebuf / BUFFER_NORM_FACTOR
-            d_state[1, -1] = np.sum(rebuf_tmp) / np.minimum(5., chunk_index)
-            d_state[2, -1] = mos_on_demand
+            d_state[0] = video_chunk_vmaf / 100.
+            d_state[1] = rebuf / BUFFER_NORM_FACTOR
+            d_state[2] = mos_on_demand
 
-            reward = rew.predict(np.reshape(d_state, (-1, 3, 5)))
+            reward = rew.predict(np.reshape(d_state, (-1, 3)))
             reward = reward[0, 0]
             d_batch.append(d_state)
             r_batch.append(reward)

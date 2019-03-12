@@ -237,7 +237,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
                                    state_dim=[S_INFO, S_LEN],
                                    learning_rate=CRITIC_LR_RATE)
         rew = disc.DiscNetwork(
-            sess, state_dim=[3], learning_rate=ACTOR_LR_RATE / 10.)
+            sess, state_dim=[4], learning_rate=ACTOR_LR_RATE / 10.)
         # initial synchronization of the network parameters from the coordinator
         actor_net_params, critic_net_params, rew_net_params = net_params_queue.get()
         actor.set_network_params(actor_net_params)
@@ -255,9 +255,8 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
         s_batch = [np.zeros((S_INFO, S_LEN))]
         a_batch = [action_vec]
         r_batch = []
-        d_batch = [np.zeros((3))]
+        d_batch = [np.zeros((4))]
         entropy_record = []
-        rebuf_tmp = np.zeros((5))
         time_stamp = 0
         chunk_index = 0
 
@@ -277,13 +276,14 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
             if last_chunk_vmaf is None:
                 last_chunk_vmaf = video_chunk_vmaf
 
-            d_state = np.zeros((3))
+            d_state = np.zeros((4))
             # caculate d_state
             d_state[0] = video_chunk_vmaf / 100.
             d_state[1] = rebuf / BUFFER_NORM_FACTOR
-            d_state[2] = mos_on_demand
+            d_state[2] = np.abs(video_chunk_vmaf-last_chunk_vmaf) / 100.
+            d_state[3] = mos_on_demand
 
-            reward = rew.predict(np.reshape(d_state, (-1, 3)))
+            reward = rew.predict(np.reshape(d_state, (-1, 4)))
             reward = reward[0, 0]
             d_batch.append(d_state)
             r_batch.append(reward)
@@ -366,7 +366,6 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
                 mos_on_demand = np.random.rand()
                 last_chunk_vmaf = None
                 chunk_index = 0
-                rebuf_tmp = np.zeros((5))
 
                 action_vec = np.zeros(A_DIM)
                 action_vec[bit_rate] = 1

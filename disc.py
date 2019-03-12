@@ -19,8 +19,8 @@ class DiscNetwork(object):
         # initalized only in the optimizing process.
         self.generate_sample()
 
-        self.fake_inputs = tflearn.input_data(shape=[None, 3], name='fakeinput')
-        self.real_inputs = tflearn.input_data(shape=[None, 3], name='realinput')
+        self.fake_inputs = tflearn.input_data(shape=[None, 4], name='fakeinput')
+        self.real_inputs = tflearn.input_data(shape=[None, 4], name='realinput')
         # Create the actor network
         self.fake_out = self.create_disc_network(self.fake_inputs)
         self.real_out = self.create_disc_network(self.real_inputs, True)
@@ -49,7 +49,7 @@ class DiscNetwork(object):
 
     def create_disc_network(self, inputs, use=False):
         with tf.variable_scope('disc', reuse=use):
-            softnet = tf.expand_dims(inputs, -1)
+            softnet = tf.expand_dims(inputs[:,0:-1], -1)
             softnet = tflearn.conv_1d(softnet, 64, 3, activation='leaky_relu')
             softnet = tflearn.batch_normalization(softnet)
             softnet = tflearn.conv_1d(softnet, 64, 3, activation='leaky_relu')
@@ -57,7 +57,10 @@ class DiscNetwork(object):
             softnet = tflearn.conv_1d(softnet, 32, 1, activation='leaky_relu')
             softnet = tflearn.batch_normalization(softnet)
             soft = tflearn.fully_connected(softnet, 32, activation='leaky_relu')
-            out = tflearn.fully_connected(soft, 1, activation='sigmoid')
+            mos = tflearn.fully_connected(inputs[:, -1], 32, activation='leaky_relu')
+            merge = tflearn.merge([soft,mos],'concat')
+            softnet = tflearn.fully_connected(merge, 32, activation='leaky_relu')
+            out = tflearn.fully_connected(softnet, 1, activation='sigmoid')
 
             return out
 

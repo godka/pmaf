@@ -7,6 +7,7 @@ import os
 import logging
 import numpy as np
 import multiprocessing as mp
+import qoe
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 
@@ -97,8 +98,8 @@ def central_agent(net_params_queues, exp_queues):
         critic = a3c.CriticNetwork(sess,
                                    state_dim=[S_INFO, S_LEN],
                                    learning_rate=CRITIC_LR_RATE)
-        rew = disc.DiscNetwork(
-            sess, state_dim=[3, 5], learning_rate=ACTOR_LR_RATE / 10.)
+        #rew = disc.DiscNetwork(
+        #    sess, state_dim=[3, 5], learning_rate=ACTOR_LR_RATE / 10.)
 
         summary_ops, summary_vars = a3c.build_summaries()
 
@@ -120,9 +121,9 @@ def central_agent(net_params_queues, exp_queues):
             # synchronize the network parameters of work agent
             actor_net_params = actor.get_network_params()
             critic_net_params = critic.get_network_params()
-            rew_net_params = rew.get_network_params()
+            #rew_net_params = rew.get_network_params()
             for i in range(NUM_AGENTS):
-                net_params_queues[i].put([actor_net_params, critic_net_params, rew_net_params])
+                net_params_queues[i].put([actor_net_params, critic_net_params])
                 # Note: this is synchronous version of the parallel training,
                 # which is easier to understand and probe. The framework can be
                 # fairly easily modified to support asynchronous training.
@@ -144,7 +145,7 @@ def central_agent(net_params_queues, exp_queues):
             critic_gradient_batch = []
 
             for i in range(NUM_AGENTS):
-                s_batch, a_batch, r_batch, d_batch, terminal, info = exp_queues[i].get()
+                s_batch, a_batch, r_batch, terminal, info = exp_queues[i].get()
 
                 actor_gradient, critic_gradient, td_batch = \
                     a3c.compute_gradients(
@@ -179,8 +180,8 @@ def central_agent(net_params_queues, exp_queues):
                 actor.apply_gradients(actor_gradient_batch[i])
                 critic.apply_gradients(critic_gradient_batch[i])
             
-            if epoch % 5 == 0:
-                rew.train(np.stack(d_batch, axis=0))
+            #if epoch % 5 == 0:
+            #    rew.train(np.stack(d_batch, axis=0))
             # log training information
             epoch += 1
             avg_reward = total_reward / total_agents / 48.
@@ -232,19 +233,20 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
                               random_seed=agent_id)
 
     with tf.Session() as sess, open(LOG_FILE + '_agent_' + str(agent_id), 'w') as log_file:
+        qoe_model = qoe.qoe(sess)
         actor = a3c.ActorNetwork(sess,
                                  state_dim=[S_INFO, S_LEN], action_dim=A_DIM,
                                  learning_rate=ACTOR_LR_RATE)
         critic = a3c.CriticNetwork(sess,
                                    state_dim=[S_INFO, S_LEN],
                                    learning_rate=CRITIC_LR_RATE)
-        rew = disc.DiscNetwork(
-            sess, state_dim=[4], learning_rate=ACTOR_LR_RATE / 10.)
+        #rew = disc.DiscNetwork(
+        #    sess, state_dim=[4], learning_rate=ACTOR_LR_RATE / 10.)
         # initial synchronization of the network parameters from the coordinator
-        actor_net_params, critic_net_params, rew_net_params = net_params_queue.get()
+        actor_net_params, critic_net_params = net_params_queue.get()
         actor.set_network_params(actor_net_params)
         critic.set_network_params(critic_net_params)
-        rew.set_network_params(rew_net_params)
+        #rew.set_network_params(rew_net_params)
 
         last_bit_rate = DEFAULT_QUALITY
         bit_rate = DEFAULT_QUALITY
@@ -257,7 +259,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
         s_batch = [np.zeros((S_INFO, S_LEN))]
         a_batch = [action_vec]
         r_batch = []
-        d_batch = [np.zeros((4))]
+        #d_batch = []
         entropy_record = []
         time_stamp = 0
         chunk_index = 0
@@ -278,17 +280,18 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
             if last_chunk_vmaf is None:
                 last_chunk_vmaf = video_chunk_vmaf
 
-            d_state = np.zeros((4))
+            d_state = np.zeros((3))
             # caculate d_state
             d_state[0] = video_chunk_vmaf / 100.
             d_state[1] = rebuf / BUFFER_NORM_FACTOR
             d_state[2] = np.abs(video_chunk_vmaf-last_chunk_vmaf) / 100.
-            d_state[3] = mos_on_demand
+            #d_state[3] = mos_on_demand
 
-            reward = rew.predict(np.reshape(d_state, (-1, 4)))
-            reward = reward[0, 0]
-            d_batch.append(d_state)
-            r_batch.append(np.log(reward))
+            reward =  qoe_model.predict(d_state)
+            #rew.predict(np.reshape(d_state, (-1, 4)))
+            #reward = reward[0, 0]
+            #d_batch.append(d_state)
+            r_batch.append(reward)
 
             last_bit_rate = bit_rate
             last_chunk_vmaf = video_chunk_vmaf
@@ -342,20 +345,20 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
                 exp_queue.put([s_batch[1:],  # ignore the first chuck
                                a_batch[1:],  # since we don't have the
                                r_batch[1:],  # control over it
-                               d_batch[1:],
+                               #d_batch[1:],
                                end_of_video,
                                {'entropy': entropy_record}])
 
                 # synchronize the network parameters from the coordinator
-                actor_net_params, critic_net_params, rew_net_params = net_params_queue.get()
+                actor_net_params, critic_net_params = net_params_queue.get()
                 actor.set_network_params(actor_net_params)
                 critic.set_network_params(critic_net_params)
-                rew.set_network_params(rew_net_params)
+                #rew.set_network_params(rew_net_params)
 
                 del s_batch[:]
                 del a_batch[:]
                 del r_batch[:]
-                del d_batch[:]
+                #del d_batch[:]
                 del entropy_record[:]
 
                 # so that in the log we know where video ends
@@ -374,7 +377,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
 
                 s_batch.append(np.zeros((S_INFO, S_LEN)))
                 a_batch.append(action_vec)
-                d_batch.append(np.zeros((3, 5)))
+                #d_batch.append(np.zeros((3, 5)))
 
             else:
                 s_batch.append(state)

@@ -288,7 +288,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
             reward = rew.predict(np.reshape(d_state, (-1, 4)))
             reward = reward[0, 0]
             d_batch.append(d_state)
-            r_batch.append(reward)
+            r_batch.append(np.log(reward))
 
             last_bit_rate = bit_rate
             last_chunk_vmaf = video_chunk_vmaf

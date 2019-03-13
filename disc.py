@@ -44,7 +44,7 @@ class DiscNetwork(object):
             tf.reduce_mean(tf.log(1. - self.fake_out + EPS))
 
         # Optimization Op
-        self.optimize = tf.train.RMSPropOptimizer(
+        self.optimize = tf.train.AdamOptimizer(
             self.lr_rate).minimize(self.obj)
 
     def create_disc_network(self, inputs, use=False):

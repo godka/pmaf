@@ -28,7 +28,7 @@ class ActorNetwork(object):
         #    return 0.03
         #else:
         #    return 0.01
-        return np.clip(step / 10000., 0.03, 0.5)
+        return np.clip(step / 20000., 0.03, 0.5)
         
     def __init__(self, sess, state_dim, action_dim, learning_rate):
         self.sess = sess
@@ -72,7 +72,7 @@ class ActorNetwork(object):
         self.actor_gradients = tf.gradients(self.obj, self.network_params)
 
         # Optimization Op
-        self.optimize = tf.train.RMSPropOptimizer(self.lr_rate).\
+        self.optimize = tf.train.AdamOptimizer(self.lr_rate).\
             apply_gradients(list(zip(self.actor_gradients, self.network_params)))
 
     def create_actor_network(self):
@@ -176,7 +176,7 @@ class CriticNetwork(object):
         self.critic_gradients = tf.gradients(self.loss, self.network_params)
 
         # Optimization Op
-        self.optimize = tf.train.RMSPropOptimizer(self.lr_rate).\
+        self.optimize = tf.train.AdamOptimizer(self.lr_rate).\
             apply_gradients(list(zip(self.critic_gradients, self.network_params)))
 
     def create_critic_network(self):

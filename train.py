@@ -178,7 +178,9 @@ def central_agent(net_params_queues, exp_queues):
             for i in range(len(actor_gradient_batch)):
                 actor.apply_gradients(actor_gradient_batch[i])
                 critic.apply_gradients(critic_gradient_batch[i])
-            rew.train(np.stack(d_batch, axis=0))
+            
+            if epoch % 5 == 0:
+                rew.train(np.stack(d_batch, axis=0))
             # log training information
             epoch += 1
             avg_reward = total_reward / total_agents / 48.
@@ -246,7 +248,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
 
         last_bit_rate = DEFAULT_QUALITY
         bit_rate = DEFAULT_QUALITY
-        mos_on_demand = np.random.rand()
+        mos_on_demand = np.random.uniform(0.3,0.9)
         last_chunk_vmaf = None
 
         action_vec = np.zeros(A_DIM)
@@ -363,7 +365,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
             if end_of_video:
                 last_bit_rate = DEFAULT_QUALITY
                 bit_rate = DEFAULT_QUALITY  # use the default action here
-                mos_on_demand = np.random.rand()
+                mos_on_demand = np.random.uniform(0.3, 0.9)
                 last_chunk_vmaf = None
                 chunk_index = 0
 

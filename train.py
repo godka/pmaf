@@ -12,12 +12,12 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 
 # bit_rate, buffer_size, next_chunk_size, bandwidth_measurement(throughput and time), chunk_til_video_end
-S_INFO = 8
+S_INFO = 7
 S_LEN = 8  # take how many frames in the past
 A_DIM = 6
 ACTOR_LR_RATE = 0.0001
 CRITIC_LR_RATE = 0.001
-NUM_AGENTS = 2
+NUM_AGENTS = 8
 TRAIN_SEQ_LEN = 100  # take as a train batch
 MODEL_SAVE_INTERVAL = 500
 VIDEO_BIT_RATE = [300, 750, 1200, 1850, 2850, 4300]  # Kbps
@@ -285,11 +285,11 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
             d_state = np.zeros((3))
             # caculate d_state
             d_state[0] = video_chunk_vmaf / 100.
-            d_state[1] = rebuf / BUFFER_NORM_FACTOR
+            d_state[1] = -rebuf / BUFFER_NORM_FACTOR
             d_state[2] = np.abs(video_chunk_vmaf-last_chunk_vmaf) / 100.
             #d_state[3] = mos_on_demand
 
-            reward =  qoe_model.predict(d_state)
+            reward =  qoe_model.predict(d_state) * 100.
             #rew.predict(np.reshape(d_state, (-1, 4)))
             #reward = reward[0, 0]
             #d_batch.append(d_state)
@@ -320,7 +320,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
                 next_video_chunk_vmaf) / 100.  # mega byte
             state[6, -1] = np.minimum(video_chunk_remain,
                                       CHUNK_TIL_VIDEO_END_CAP) / float(CHUNK_TIL_VIDEO_END_CAP)
-            state[7, -1] = mos_on_demand
+            #state[7, -1] = mos_on_demand
 
             # compute action probability vector
             action_prob = actor.predict(np.reshape(state, (1, S_INFO, S_LEN)))

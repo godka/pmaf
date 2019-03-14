@@ -8,7 +8,7 @@ import a3c
 import fixed_env as env
 
 
-S_INFO = 8  # bit_rate, buffer_size, next_chunk_size, bandwidth_measurement(throughput and time), chunk_til_video_end
+S_INFO = 7  # bit_rate, buffer_size, next_chunk_size, bandwidth_measurement(throughput and time), chunk_til_video_end
 S_LEN = 8  # take how many frames in the past
 A_DIM = 6
 ACTOR_LR_RATE = 0.0001
@@ -134,7 +134,7 @@ def main():
             state[4, :A_DIM] = np.array(next_video_chunk_sizes) / M_IN_K / M_IN_K  # mega byte
             state[5, :A_DIM] = np.array(next_video_chunk_vmaf) / 100.  # mega byte
             state[6, -1] = np.minimum(video_chunk_remain, CHUNK_TIL_VIDEO_END_CAP) / float(CHUNK_TIL_VIDEO_END_CAP)
-            state[7, -1] = np.random.uniform(0.95, 0.99)
+            #state[7, -1] = np.random.uniform(0.95, 0.99)
 
             action_prob = actor.predict(np.reshape(state, (1, S_INFO, S_LEN)))
             action_cumsum = np.cumsum(action_prob)

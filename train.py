@@ -182,7 +182,8 @@ def central_agent(net_params_queues, exp_queues):
             for i in range(len(actor_gradient_batch)):
                 actor.apply_gradients(actor_gradient_batch[i])
                 critic.apply_gradients(critic_gradient_batch[i])
-            
+
+            qoe_model.train()
             #if epoch % 5 == 0:
             #    rew.train(np.stack(d_batch, axis=0))
             # log training information

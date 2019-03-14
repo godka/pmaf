@@ -18,17 +18,17 @@ class ActorNetwork(object):
     """
 
     def get_entropy(self, step):
-        #if step < 10000:
-        #    return 0.5
-        #elif step < 20000:
-        #    return 0.4
-        #elif step < 30000:
-        #    return 0.05
-        #elif step < 35000:
-        #    return 0.03
-        #else:
-        #    return 0.01
-        return np.clip(step / 20000., 0.03, 0.5)
+        if step < 10000:
+           return 5.
+        elif step < 20000:
+           return 1.
+        elif step < 30000:
+           return 0.5
+        elif step < 35000:
+           return 0.3
+        else:
+           return 0.2
+        #return np.clip(step / 20000., 0.03, 0.5)
         
     def __init__(self, sess, state_dim, action_dim, learning_rate):
         self.sess = sess

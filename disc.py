@@ -113,7 +113,7 @@ class DiscNetwork(object):
 
     def generate_sample(self):
         #print('generating real data...')
-        f = h5py.File('train.hdf5', 'r')
+        f = h5py.File('train.h5', 'r')
         real_sample_inputs = np.array(f['realx'])
         real_sample_actions = np.array(f['realy'])
         f.close()
@@ -129,8 +129,8 @@ class DiscNetwork(object):
     def predict(self, inputs, actions):
         # Run fake
         return self.sess.run(self.fake_out, feed_dict={
-            self.fake_inputs: inputs,
-            self.fake_actions: actions
+            self.fake_inputs: np.reshape(inputs, (-1, self.s_dim[0], self.s_dim[1])),
+            self.fake_actions: np.reshape(actions, (-1, A_DIM))
         })
 
     def get_network_params(self):

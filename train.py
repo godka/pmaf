@@ -101,7 +101,7 @@ def central_agent(net_params_queues, exp_queues):
                                    state_dim=[S_INFO, S_LEN],
                                    learning_rate=CRITIC_LR_RATE)
         rew = disc.DiscNetwork(
-            sess, state_dim=[3, 5], learning_rate=ACTOR_LR_RATE / 10.)
+            sess, state_dim=[S_INFO, S_LEN], learning_rate=ACTOR_LR_RATE / 10.)
 
         summary_ops, summary_vars = a3c.build_summaries()
 
@@ -246,7 +246,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
                                    state_dim=[S_INFO, S_LEN],
                                    learning_rate=CRITIC_LR_RATE)
         rew = disc.DiscNetwork(
-            sess, state_dim=[4], learning_rate=ACTOR_LR_RATE / 10.)
+            sess, state_dim=[S_INFO, S_LEN], learning_rate=ACTOR_LR_RATE / 10.)
         # initial synchronization of the network parameters from the coordinator
         actor_net_params, critic_net_params, rew_net_params = net_params_queue.get()
         actor.set_network_params(actor_net_params)

@@ -1,4 +1,4 @@
-import disc
+#import disc
 import load_trace
 import a3c
 import env
@@ -17,9 +17,9 @@ S_LEN = 8  # take how many frames in the past
 A_DIM = 6
 ACTOR_LR_RATE = 0.0001
 CRITIC_LR_RATE = 0.001
-NUM_AGENTS = 20
+NUM_AGENTS = 12
 TRAIN_SEQ_LEN = 100  # take as a train batch
-MODEL_SAVE_INTERVAL = 500
+MODEL_SAVE_INTERVAL = 150
 VIDEO_BIT_RATE = [300, 750, 1200, 1850, 2850, 4300]  # Kbps
 HD_REWARD = [1, 2, 3, 12, 15, 20]
 BUFFER_NORM_FACTOR = 10.0
@@ -292,6 +292,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
             #d_state[3] = mos_on_demand
 
             reward = qoe_model.predict(d_state) * 100.
+            reward = reward[0][0]
             #rew.predict(np.reshape(d_state, (-1, 4)))
             #reward = reward[0, 0]
             #d_batch.append(d_state)

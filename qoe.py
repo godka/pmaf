@@ -42,12 +42,12 @@ class qoe(object):
         _filter_n = _shape[-1]
         #fc_net = tflearn.fully_connected(net, filter_num, activation='relu')
         cnn_net = tflearn.conv_1d(net, filter_num, 1, activation='relu')
-        cnn_net = tflearn.batch_normalization(cnn_net)
+        #cnn_net = tflearn.batch_normalization(cnn_net)
         cnn_net = tflearn.conv_1d(
             cnn_net, filter_num, filter_size, activation='relu')
-        cnn_net = tflearn.batch_normalization(cnn_net)
+        #cnn_net = tflearn.batch_normalization(cnn_net)
         cnn_net = tflearn.conv_1d(cnn_net, _filter_n, 1, activation='relu')
-        cnn_net = tflearn.batch_normalization(cnn_net)
+        #cnn_net = tflearn.batch_normalization(cnn_net)
         # cnn_net: 1,3,64
         out = tf.add(net, cnn_net)
         return out
@@ -57,7 +57,7 @@ class qoe(object):
             inputs = tflearn.input_data(shape=[None, 3], name='input')
             softnet = tf.expand_dims(inputs, -1)
             softnet = tflearn.conv_1d(softnet, 64, 1, activation='relu')
-            softnet = tflearn.batch_normalization(softnet)
+            #softnet = tflearn.batch_normalization(softnet)
             for p in range(20):
                 softnet = self.conv_1d_res_block(softnet, 64, 3)
             #softnet = tf.expand_dims(softnet, 1)

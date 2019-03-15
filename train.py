@@ -1,4 +1,4 @@
-#import disc
+import disc
 import load_trace
 import a3c
 import env
@@ -7,7 +7,7 @@ import os
 import logging
 import numpy as np
 import multiprocessing as mp
-import qoe
+#import qoe
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 
@@ -93,15 +93,15 @@ def central_agent(net_params_queues, exp_queues):
                         level=logging.INFO)
 
     with tf.Session() as sess, open(LOG_FILE + '_test', 'w') as test_log_file:
-        qoe_model  =qoe.qoe(sess, learning_rate=ACTOR_LR_RATE)
+        #qoe_model  =qoe.qoe(sess, learning_rate=ACTOR_LR_RATE)
         actor = a3c.ActorNetwork(sess,
                                  state_dim=[S_INFO, S_LEN], action_dim=A_DIM,
                                  learning_rate=ACTOR_LR_RATE)
         critic = a3c.CriticNetwork(sess,
                                    state_dim=[S_INFO, S_LEN],
                                    learning_rate=CRITIC_LR_RATE)
-        #rew = disc.DiscNetwork(
-        #    sess, state_dim=[3, 5], learning_rate=ACTOR_LR_RATE / 10.)
+        rew = disc.DiscNetwork(
+            sess, state_dim=[3, 5], learning_rate=ACTOR_LR_RATE / 10.)
 
         summary_ops, summary_vars = a3c.build_summaries()
 
@@ -123,10 +123,10 @@ def central_agent(net_params_queues, exp_queues):
             # synchronize the network parameters of work agent
             actor_net_params = actor.get_network_params()
             critic_net_params = critic.get_network_params()
-            qoe_net_params = qoe_model.get_network_params()
-            #rew_net_params = rew.get_network_params()
+            #qoe_net_params = qoe_model.get_network_params()
+            rew_net_params = rew.get_network_params()
             for i in range(NUM_AGENTS):
-                net_params_queues[i].put([actor_net_params, critic_net_params, qoe_net_params])
+                net_params_queues[i].put([actor_net_params, critic_net_params, rew_net_params])
                 # Note: this is synchronous version of the parallel training,
                 # which is easier to understand and probe. The framework can be
                 # fairly easily modified to support asynchronous training.
@@ -149,12 +149,13 @@ def central_agent(net_params_queues, exp_queues):
 
             for i in range(NUM_AGENTS):
                 s_batch, a_batch, r_batch, terminal, info = exp_queues[i].get()
-
+                s_batch=np.stack(s_batch, axis=0)
+                a_batch=np.vstack(a_batch)
                 actor_gradient, critic_gradient, td_batch = \
                     a3c.compute_gradients(
                         epoch=epoch,
-                        s_batch=np.stack(s_batch, axis=0),
-                        a_batch=np.vstack(a_batch),
+                        s_batch=s_batch,
+                        a_batch=a_batch,
                         r_batch=np.vstack(r_batch),
                         #d_batch=np.vstack(d_batch),
                         terminal=terminal, actor=actor, critic=critic)
@@ -183,9 +184,9 @@ def central_agent(net_params_queues, exp_queues):
                 actor.apply_gradients(actor_gradient_batch[i])
                 critic.apply_gradients(critic_gradient_batch[i])
 
-            qoe_model.train()
+            #qoe_model.train()
             #if epoch % 5 == 0:
-            #    rew.train(np.stack(d_batch, axis=0))
+            rew.train(s_batch, a_batch)
             # log training information
             epoch += 1
             avg_reward = total_reward / total_agents / 48.
@@ -237,21 +238,21 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
                               random_seed=agent_id)
 
     with tf.Session() as sess, open(LOG_FILE + '_agent_' + str(agent_id), 'w') as log_file:
-        qoe_model = qoe.qoe(sess, learning_rate=ACTOR_LR_RATE)
+        #qoe_model = qoe.qoe(sess, learning_rate=ACTOR_LR_RATE)
         actor = a3c.ActorNetwork(sess,
                                  state_dim=[S_INFO, S_LEN], action_dim=A_DIM,
                                  learning_rate=ACTOR_LR_RATE)
         critic = a3c.CriticNetwork(sess,
                                    state_dim=[S_INFO, S_LEN],
                                    learning_rate=CRITIC_LR_RATE)
-        #rew = disc.DiscNetwork(
-        #    sess, state_dim=[4], learning_rate=ACTOR_LR_RATE / 10.)
+        rew = disc.DiscNetwork(
+            sess, state_dim=[4], learning_rate=ACTOR_LR_RATE / 10.)
         # initial synchronization of the network parameters from the coordinator
-        actor_net_params, critic_net_params, qoe_net_params = net_params_queue.get()
+        actor_net_params, critic_net_params, rew_net_params = net_params_queue.get()
         actor.set_network_params(actor_net_params)
         critic.set_network_params(critic_net_params)
-        qoe_model.set_network_params(qoe_net_params)
-        #rew.set_network_params(rew_net_params)
+        #qoe_model.set_network_params(qoe_net_params)
+        rew.set_network_params(rew_net_params)
 
         last_bit_rate = DEFAULT_QUALITY
         bit_rate = DEFAULT_QUALITY
@@ -284,19 +285,18 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
             if last_chunk_vmaf is None:
                 last_chunk_vmaf = video_chunk_vmaf
 
-            d_state = np.zeros((3))
-            # caculate d_state
-            d_state[0] = video_chunk_vmaf / 100.
-            d_state[1] = -rebuf / BUFFER_NORM_FACTOR
-            d_state[2] = np.abs(video_chunk_vmaf-last_chunk_vmaf) / 100.
+            # d_state = np.zeros((3))
+            # # caculate d_state
+            # d_state[0] = video_chunk_vmaf / 100.
+            # d_state[1] = -rebuf / BUFFER_NORM_FACTOR
+            # d_state[2] = np.abs(video_chunk_vmaf-last_chunk_vmaf) / 100.
             #d_state[3] = mos_on_demand
 
-            reward = qoe_model.predict(d_state) * 100.
-            reward = reward[0][0]
-            #rew.predict(np.reshape(d_state, (-1, 4)))
-            #reward = reward[0, 0]
+            reward = rew.predict(s_batch[-1], a_batch[-1])
+            reward = reward[0, 0]
             #d_batch.append(d_state)
-            r_batch.append(reward)
+            #trick,use gan loss.
+            r_batch.append(np.log(reward))
 
             last_bit_rate = bit_rate
             last_chunk_vmaf = video_chunk_vmaf
@@ -358,8 +358,8 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
                 actor_net_params, critic_net_params, qoe_net_params = net_params_queue.get()
                 actor.set_network_params(actor_net_params)
                 critic.set_network_params(critic_net_params)
-                qoe_model.set_network_params(qoe_net_params)
-                #rew.set_network_params(rew_net_params)
+                #qoe_model.set_network_params(qoe_net_params)
+                rew.set_network_params(rew_net_params)
 
                 del s_batch[:]
                 del a_batch[:]

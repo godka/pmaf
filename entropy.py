@@ -1,5 +1,5 @@
 import numpy as np
-def generate(act_size, act, entropy_expected):
+def generate_entropy(act_size, act, entropy_expected):
     eps = 3e-3
     _act_prob = 1. / act_size
     _act = np.zeros((act_size))
@@ -23,11 +23,13 @@ def generate(act_size, act, entropy_expected):
     _act[act] = _tmp
     return _act, _entropy
 
-import time
-t = time.time()
-_arr = 0.
-for p in range(100):
-    _act, _entropy = generate(6,3,1.3)
-    print(_act)
-    _arr += np.abs(_entropy - 1.3)
-print(time.time() - t, 's', _arr / 100.)
+if __name__ == "__main__":
+    import time
+    t = time.time()
+    _arr = 0.
+    for p in range(100):
+        _act, _entropy = generate_entropy(6,3,1.3)
+        print(_act)
+        _arr += np.abs(_entropy - 1.3)
+    print(time.time() - t, 's', _arr / 100.)
+    

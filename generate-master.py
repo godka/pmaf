@@ -41,7 +41,6 @@ def read_logs(log_file):
         buffer.append(get_chunk(float(_sp_lines[1])))
     #buffer.reverse()
     _file.close()
-    print(len(buffer))
     return np.array(buffer)
 
 
@@ -163,7 +162,7 @@ def main():
             action_buffer = read_logs(all_file_names[net_env.trace_idx])
             action_index = 0
 
-    print(video_count)
+    print(len(s_batch), len(a_batch))
     f = h5py.File('train.h5', 'w')
     f['realx'] = np.array(s_batch)
     f['realy'] = np.array(a_batch)

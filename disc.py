@@ -16,7 +16,7 @@ class DiscNetwork(object):
         self.sess = sess
         self.s_dim = state_dim
         self.lr_rate = learning_rate
-        self.batch_size = 128
+        self.batch_size = 256
         # initalized only in the optimizing process.
         self.real_sample_inputs, self.real_sample_actions = self.generate_sample()
 
@@ -72,6 +72,8 @@ class DiscNetwork(object):
                 inputs[:, 5:6, :A_DIM], 128, 4, activation='leaky_relu')
             split_6 = tflearn.fully_connected(
                 inputs[:, 6:7, -1], 128, activation='leaky_relu')
+            split_7 = tflearn.fully_connected(
+                actions, 128, activation='leaky_relu')
 
             split_2_flat = tflearn.flatten(split_2)
             split_3_flat = tflearn.flatten(split_3)
@@ -79,15 +81,11 @@ class DiscNetwork(object):
             split_5_flat = tflearn.flatten(split_5)
 
             merge_net = tflearn.merge([split_0, split_1, split_2_flat,
-                                       split_3_flat, split_4_flat, split_5_flat, split_6], 'concat')
+                                       split_3_flat, split_4_flat, split_5_flat,
+                                        split_6, split_7], 'concat')
 
             dense_net_0 = tflearn.fully_connected(
-                merge_net, 128, activation='relu')
-            split_7 = tflearn.fully_connected(
-                actions, 128, activation='leaky_relu')
-            merge_net_1 = tflearn.merge([dense_net_0, split_7], 'concat')
-            dense_net_0 = tflearn.fully_connected(
-                merge_net_1, 128, activation='relu')
+                merge_net, 128, activation='leaky_relu')
             out = tflearn.fully_connected(dense_net_0, 1, activation='sigmoid')
 
             return out
@@ -96,13 +94,13 @@ class DiscNetwork(object):
         # Run fake & real
         # use trick: k>1
         sample_size = int(self.batch_size // 2)
-        inputs, actions = tflearn.data_utils.shuffle(inputs, actions)
-        self.real_sample_inputs, self.real_sample_actions = tflearn.data_utils.shuffle(
-            self.real_sample_inputs, self.real_sample_actions)
-        sample_inputs, sample_actions = self.sample(sample_size)
+        #inputs, actions = tflearn.data_utils.shuffle(inputs, actions)
+        #self.real_sample_inputs, self.real_sample_actions = tflearn.data_utils.shuffle(
+        #    self.real_sample_inputs, self.real_sample_actions)
         # for _ in range(self.k):
         _index = 0
         while(_index < inputs.shape[0]):
+            sample_inputs, sample_actions = self.sample(sample_size)
             self.sess.run(self.optimize, feed_dict={
                 self.fake_inputs: inputs[_index: _index + sample_size],
                 self.fake_actions: actions[_index: _index + sample_size],

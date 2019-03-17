@@ -1,4 +1,5 @@
 import numpy as np
+
 def generate_entropy(act_size, act, entropy_expected):
     eps = 3e-3
     _act_prob = 1. / act_size
@@ -22,6 +23,9 @@ def generate_entropy(act_size, act, entropy_expected):
     _act[0] = _act[act]
     _act[act] = _tmp
     return _act, _entropy
+
+def compute_entropy(act):
+    return np.sum(-act * np.log(act + 1e-6))
 
 if __name__ == "__main__":
     import time

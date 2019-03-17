@@ -16,7 +16,7 @@ class DiscNetwork(object):
         self.sess = sess
         self.s_dim = state_dim
         self.lr_rate = learning_rate
-        self.batch_size = 256
+        self.batch_size = 128
         # initalized only in the optimizing process.
         self.real_sample_inputs, self.real_sample_actions = self.generate_sample()
 
@@ -73,7 +73,7 @@ class DiscNetwork(object):
             split_6 = tflearn.fully_connected(
                 inputs[:, 6:7, -1], 128, activation='leaky_relu')
             split_7 = tflearn.fully_connected(
-                actions, 128, activation='leaky_relu')
+                actions, 32, activation='leaky_relu')
 
             split_2_flat = tflearn.flatten(split_2)
             split_3_flat = tflearn.flatten(split_3)
@@ -86,6 +86,10 @@ class DiscNetwork(object):
 
             dense_net_0 = tflearn.fully_connected(
                 merge_net, 128, activation='leaky_relu')
+
+            merge_net = tflearn.merge([dense_net_0, split_7], 'concat')
+            dense_net_1 = tflearn.fully_connected(merge_net, 128, activation='leaky_relu')
+
             out = tflearn.fully_connected(dense_net_0, 1, activation='sigmoid')
 
             return out

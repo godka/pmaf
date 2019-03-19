@@ -18,21 +18,17 @@ class DiscNetwork(object):
         self.lr_rate = learning_rate
         self.batch_size = 128
         # initalized only in the optimizing process.
-        self.real_sample_inputs, self.real_sample_actions = self.generate_sample()
+        self.real_sample_inputs = self.generate_sample()
 
         self.fake_inputs = tflearn.input_data(
             shape=[None, self.s_dim[0], self.s_dim[1]], name='fakeinput')
         self.real_inputs = tflearn.input_data(
             shape=[None, self.s_dim[0], self.s_dim[1]], name='realinput')
-        self.fake_actions = tflearn.input_data(
-            shape=[None, A_DIM], name='fakeinput')
-        self.real_actions = tflearn.input_data(
-            shape=[None, A_DIM], name='realinput')
-        # Create the actor network
+            
         self.fake_out = self.create_disc_network(
-            self.fake_inputs, self.fake_actions)
+            self.fake_inputs)
         self.real_out = self.create_disc_network(
-            self.real_inputs, self.real_actions, True)
+            self.real_inputs, True)
 
         # Get all network parameters
         self.network_params = \
@@ -56,7 +52,7 @@ class DiscNetwork(object):
         self.optimize = tf.train.AdamOptimizer(
             self.lr_rate).minimize(self.obj)
 
-    def create_disc_network(self, inputs, actions, use=False):
+    def create_disc_network(self, inputs, use=False):
         with tf.variable_scope('disc', reuse=use):
             split_0 = tflearn.fully_connected(
                 inputs[:, 0:1, -1], 128, activation='leaky_relu')
@@ -72,8 +68,6 @@ class DiscNetwork(object):
                 inputs[:, 5:6, :A_DIM], 128, 4, activation='leaky_relu')
             split_6 = tflearn.fully_connected(
                 inputs[:, 6:7, -1], 128, activation='leaky_relu')
-            split_7 = tflearn.fully_connected(
-                actions, 32, activation='leaky_relu')
 
             split_2_flat = tflearn.flatten(split_2)
             split_3_flat = tflearn.flatten(split_3)
@@ -82,57 +76,46 @@ class DiscNetwork(object):
 
             merge_net = tflearn.merge([split_0, split_1, split_2_flat,
                                        split_3_flat, split_4_flat, split_5_flat,
-                                        split_6, split_7], 'concat')
+                                        split_6], 'concat')
 
             dense_net_0 = tflearn.fully_connected(
                 merge_net, 128, activation='leaky_relu')
-
-            merge_net = tflearn.merge([dense_net_0, split_7], 'concat')
-            dense_net_1 = tflearn.fully_connected(merge_net, 128, activation='leaky_relu')
 
             out = tflearn.fully_connected(dense_net_0, 1, activation='sigmoid')
 
             return out
 
-    def train(self, inputs, actions):
+    def train(self, inputs):
         # Run fake & real
         # use trick: k>1
         sample_size = int(self.batch_size // 2)
-        #inputs, actions = tflearn.data_utils.shuffle(inputs, actions)
-        #self.real_sample_inputs, self.real_sample_actions = tflearn.data_utils.shuffle(
-        #    self.real_sample_inputs, self.real_sample_actions)
-        # for _ in range(self.k):
         _index = 0
         while(_index < inputs.shape[0]):
-            sample_inputs, sample_actions = self.sample(sample_size)
+            sample_inputs = self.sample(sample_size)
             self.sess.run(self.optimize, feed_dict={
                 self.fake_inputs: inputs[_index: _index + sample_size],
-                self.fake_actions: actions[_index: _index + sample_size],
-                self.real_inputs: sample_inputs,
-                self.real_actions: sample_actions
+                self.real_inputs: sample_inputs
             })
             _index += sample_size
 
     def generate_sample(self):
         #print('generating real data...')
         f = h5py.File('train.h5', 'r')
-        real_sample_inputs = np.array(f['realx'])
-        real_sample_actions = np.array(f['realy'])
+        real_sample_inputs = np.array(f['real'])
         f.close()
-        return real_sample_inputs, real_sample_actions
+        return real_sample_inputs
 
     def sample(self, sample_size):
         # let's rock&roll
         # picks sample from real sample pool
         i = np.random.randint(
             0, self.real_sample_inputs.shape[0] - sample_size)
-        return self.real_sample_inputs[i:i+sample_size], self.real_sample_actions[i:i+sample_size]
+        return self.real_sample_inputs[i:i+sample_size]
 
-    def predict(self, inputs, actions):
+    def predict(self, inputs):
         # Run fake
         return self.sess.run(self.fake_out, feed_dict={
             self.fake_inputs: np.reshape(inputs, (-1, self.s_dim[0], self.s_dim[1])),
-            self.fake_actions: np.reshape(actions, (-1, A_DIM))
         })
 
     def get_network_params(self):

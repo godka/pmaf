@@ -186,7 +186,7 @@ def central_agent(net_params_queues, exp_queues):
 
             #qoe_model.train()
             #if epoch % 5 == 0:
-            rew.train(s_batch, a_batch)
+            rew.train(s_batch)
             # log training information
             epoch += 1
             avg_reward = total_reward / total_agents / 48.
@@ -292,7 +292,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
             # d_state[2] = np.abs(video_chunk_vmaf-last_chunk_vmaf) / 100.
             #d_state[3] = mos_on_demand
 
-            reward = rew.predict(s_batch[-1], a_batch[-1])
+            reward = rew.predict(s_batch[-1])
             reward = reward[0, 0]
             #d_batch.append(d_state)
             #trick,use gan loss.

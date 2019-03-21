@@ -7,6 +7,7 @@ import os
 import logging
 import numpy as np
 import multiprocessing as mp
+import pretrain
 #import qoe
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
@@ -36,7 +37,6 @@ TEST_LOG_FOLDER = './test_results/'
 TRAIN_TRACES = './cooked_traces/'
 # NN_MODEL = './results/pretrain_linear_reward.ckpt'
 NN_MODEL = None
-
 
 def testing(epoch, nn_model, log_file):
     # clean up the test results folder
@@ -115,7 +115,9 @@ def central_agent(net_params_queues, exp_queues):
         if nn_model is not None:  # nn_model is the path to file
             saver.restore(sess, nn_model)
             print("Model restored.")
-
+        # pretrain
+        _pretrain = pretrain.pretrain(sess, actor, critic, rew)
+        _pretrain.train()
         epoch = 0
         avg_test = 0.
         # assemble experiences from agents, compute the gradients

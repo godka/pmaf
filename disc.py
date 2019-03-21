@@ -54,34 +54,41 @@ class DiscNetwork(object):
 
     def create_disc_network(self, inputs, use=False):
         with tf.variable_scope('disc', reuse=use):
-            split_0 = tflearn.fully_connected(
-                inputs[:, 0:1, -1], 128, activation='leaky_relu')
-            split_1 = tflearn.fully_connected(
-                inputs[:, 1:2, -1], 128, activation='leaky_relu')
-            split_2 = tflearn.conv_1d(
-                inputs[:, 2:3, :], 128, 4, activation='leaky_relu')
-            split_3 = tflearn.conv_1d(
-                inputs[:, 3:4, :], 128, 4, activation='leaky_relu')
-            split_4 = tflearn.conv_1d(
-                inputs[:, 4:5, :A_DIM], 128, 4, activation='leaky_relu')
-            split_5 = tflearn.conv_1d(
-                inputs[:, 5:6, :A_DIM], 128, 4, activation='leaky_relu')
-            split_6 = tflearn.fully_connected(
-                inputs[:, 6:7, -1], 128, activation='leaky_relu')
+            net = tf.expand_dims(inputs, -1)
+            net = tflearn.conv_2d(net, 128, 3, activation='leaky_relu')
+            net = tflearn.conv_2d(net, 128, 3, activation='leaky_relu')
+            net = tflearn.conv_2d(net, 64, 1, activation='leaky_relu')
+            #net = tflearn.fully_connected(net, 128, activation='leaky_relu')
+            net = tflearn.global_avg_pool(net)
+            out = tflearn.fully_connected(net, 1, activation='sigmoid')
+            #split_0 = tflearn.fully_connected(
+            #    inputs[:, 0:1, -1], 128, activation='leaky_relu')
+            #split_1 = tflearn.fully_connected(
+            #    inputs[:, 1:2, -1], 128, activation='leaky_relu')
+            #split_2 = tflearn.conv_1d(
+            #    inputs[:, 2:3, :], 128, 4, activation='leaky_relu')
+            #split_3 = tflearn.conv_1d(
+            #   inputs[:, 3:4, :], 128, 4, activation='leaky_relu')
+            #split_4 = tflearn.conv_1d(
+            #    inputs[:, 4:5, :A_DIM], 128, 4, activation='leaky_relu')
+            #split_5 = tflearn.conv_1d(
+            #    inputs[:, 5:6, :A_DIM], 128, 4, activation='leaky_relu')
+            #split_6 = tflearn.fully_connected(
+            #    inputs[:, 6:7, -1], 128, activation='leaky_relu')
 
-            split_2_flat = tflearn.flatten(split_2)
-            split_3_flat = tflearn.flatten(split_3)
-            split_4_flat = tflearn.flatten(split_4)
-            split_5_flat = tflearn.flatten(split_5)
+            #split_2_flat = tflearn.flatten(split_2)
+            #split_3_flat = tflearn.flatten(split_3)
+            #split_4_flat = tflearn.flatten(split_4)
+            #split_5_flat = tflearn.flatten(split_5)
 
-            merge_net = tflearn.merge([split_0, split_1, split_2_flat,
-                                       split_3_flat, split_4_flat, split_5_flat,
-                                        split_6], 'concat')
+            #merge_net = tflearn.merge([split_0, split_1, split_2_flat,
+            #                           split_3_flat, split_4_flat, split_5_flat,
+            #                            split_6], 'concat')
 
-            dense_net_0 = tflearn.fully_connected(
-                merge_net, 128, activation='leaky_relu')
+            #dense_net_0 = tflearn.fully_connected(
+            #    merge_net, 128, activation='leaky_relu')
 
-            out = tflearn.fully_connected(dense_net_0, 1, activation='sigmoid')
+            #out = tflearn.fully_connected(dense_net_0, 1, activation='sigmoid')
 
             return out
 

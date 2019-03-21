@@ -101,7 +101,7 @@ def central_agent(net_params_queues, exp_queues):
                                    state_dim=[S_INFO, S_LEN],
                                    learning_rate=CRITIC_LR_RATE)
         rew = disc.DiscNetwork(
-            sess, state_dim=[S_INFO, S_LEN], learning_rate=ACTOR_LR_RATE / 10.)
+            sess, state_dim=[S_INFO, S_LEN], learning_rate=ACTOR_LR_RATE)
 
         summary_ops, summary_vars = a3c.build_summaries()
 

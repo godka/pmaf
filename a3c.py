@@ -283,10 +283,10 @@ def discount(x, gamma):
     out[-1] = x[-1]
     for i in reversed(range(len(x)-1)):
         out[i] = x[i] + gamma*out[i+1]
-    assert x.ndim >= 1
+    #assert x.ndim >= 1
     # More efficient version:
     # scipy.signal.lfilter([1],[1,-gamma],x[::-1], axis=0)[::-1]
-    return out
+    return list(out)
 
 
 def compute_entropy(x):

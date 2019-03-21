@@ -101,7 +101,7 @@ class DiscNetwork(object):
     def generate_sample(self):
         #print('generating real data...')
         f = h5py.File('train.h5', 'r')
-        real_sample_inputs = np.array(f['real'])
+        real_sample_inputs = np.array(f['realx'])
         f.close()
         return real_sample_inputs
 

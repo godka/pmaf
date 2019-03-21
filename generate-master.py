@@ -2,8 +2,9 @@ import os
 import sys
 import numpy as np
 import load_trace
-import fixed_env as env
+import vmaf_env as env
 import h5py
+import a3c
 
 # bit_rate, buffer_size, next_chunk_size, bandwidth_measurement(throughput and time), chunk_til_video_end
 S_INFO = 7
@@ -23,23 +24,26 @@ SMOOTH_PENALTY = 1
 DEFAULT_QUALITY = 1  # default video quality without agent
 RANDOM_SEED = 42
 RAND_RANGE = 1000
-LOG_FILE = './test_results/log_sim_rl'
-TEST_TRACES = './cooked_test_traces/'
-COMYCO_TRACES = './master/'
+LOG_FILE = './best-bak/log_sim_best'
+TEST_TRACES = './traces/'
+COMYCO_TRACES = './best/'
+
 
 def get_chunk(bitrate):
     for i, p in enumerate(VIDEO_BIT_RATE):
         if p - bitrate == 0:
             return i
 
+
 def read_logs(log_file):
-    _file = open(COMYCO_TRACES + 'log_sim_vptpc_' + log_file, 'r')
+    _file = open(COMYCO_TRACES + log_file, 'r')
     buffer = []
     for _lines in _file:
-        #if len(_lines.split()) >= 2:
+        # if len(_lines.split()) >= 2:
         _sp_lines = _lines.split()
-        buffer.append(get_chunk(float(_sp_lines[1])))
-    #buffer.reverse()
+        if len(_sp_lines) > 2:
+            buffer.append(get_chunk(float(_sp_lines[1])))
+    # buffer.reverse()
     _file.close()
     return np.array(buffer)
 
@@ -71,7 +75,9 @@ def main():
 
     s_batch = []
     a_batch = []
-    #r_batch = []
+    r_batch = []
+    r_batch_0 = []
+    V_batch = []
     video_count = 0
 
     while True:  # serve video forever
@@ -92,7 +98,8 @@ def main():
             - SMOOTH_PENALTY * np.abs(VIDEO_BIT_RATE[bit_rate] -
                                       VIDEO_BIT_RATE[last_bit_rate]) / M_IN_K
 
-        # r_batch.append(reward)
+        r_batch.append(reward)
+        r_batch_0.append(reward)
 
         last_bit_rate = bit_rate
 
@@ -126,7 +133,7 @@ def main():
         state[5, :A_DIM] = np.array(
             next_video_chunk_vmaf) / 100.  # mega byte
         state[6, -1] = np.minimum(video_chunk_remain,
-                                    CHUNK_TIL_VIDEO_END_CAP) / float(CHUNK_TIL_VIDEO_END_CAP)
+                                  CHUNK_TIL_VIDEO_END_CAP) / float(CHUNK_TIL_VIDEO_END_CAP)
 
         s_batch.append(state)
         if action_index < action_buffer.shape[0]:
@@ -142,14 +149,21 @@ def main():
             log_file.write('\n')
             log_file.close()
 
+            v_batch = a3c.discount(r_batch_0, 0.99)
+            r_batch_0 = []
+            V_batch += v_batch
+
             last_bit_rate = DEFAULT_QUALITY
             bit_rate = DEFAULT_QUALITY  # use the default action here
 
             action_vec = np.zeros(A_DIM)
             action_vec[bit_rate] = 1
-            #miscast
+
+            #r_batch = []
+            #s_batch = []
+            # miscast
             #s_batch.append(np.zeros((S_INFO, S_LEN)))
-            #a_batch.append(action_vec)
+            # a_batch.append(action_vec)
             #entropy_record = []
 
             video_count += 1
@@ -162,10 +176,15 @@ def main():
             action_buffer = read_logs(all_file_names[net_env.trace_idx])
             action_index = 0
 
-    print(len(s_batch), len(a_batch))
+    print(len(s_batch), len(a_batch), len(V_batch))
     f = h5py.File('train.h5', 'w')
-    f['realx'] = np.array(s_batch)
-    f['realy'] = np.array(a_batch)
+    s_batch = np.array(s_batch)
+    a_batch = np.array(a_batch)
+    V_batch = np.array(V_batch)
+    f['realx'] = s_batch
+    f['realy'] = a_batch
+    f['realv'] = V_batch
+    print()
     f.close()
 
 

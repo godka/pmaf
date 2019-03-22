@@ -1,2 +1,2 @@
-model_checkpoint_path: "C:\\Users\\Tianchi\\git\\pmaf\\models\\pretrain.ckpt"
-all_model_checkpoint_paths: "C:\\Users\\Tianchi\\git\\pmaf\\models\\pretrain.ckpt"
+model_checkpoint_path: "/home/godka/pmaf-gail/models/pretrain.ckpt"
+all_model_checkpoint_paths: "/home/godka/pmaf-gail/models/pretrain.ckpt"

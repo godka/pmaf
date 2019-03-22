@@ -8,6 +8,7 @@ import logging
 import numpy as np
 import multiprocessing as mp
 import pretrain
+import sys
 #import qoe
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
@@ -103,6 +104,8 @@ def central_agent(net_params_queues, exp_queues):
         rew = disc.DiscNetwork(
             sess, state_dim=[S_INFO, S_LEN], learning_rate=ACTOR_LR_RATE)
 
+        _pretrain = pretrain.pretrain(sess, actor, critic, rew)
+        
         summary_ops, summary_vars = a3c.build_summaries()
 
         sess.run(tf.global_variables_initializer())
@@ -115,9 +118,10 @@ def central_agent(net_params_queues, exp_queues):
         if nn_model is not None:  # nn_model is the path to file
             saver.restore(sess, nn_model)
             print("Model restored.")
-        # pretrain
-        _pretrain = pretrain.pretrain(sess, actor, critic, rew)
-        _pretrain.train()
+        else:
+            _pretrain.train()
+            saver.save(sess, 'pretrain/pretrain.ckpt') 
+
         epoch = 0
         avg_test = 0.
         # assemble experiences from agents, compute the gradients

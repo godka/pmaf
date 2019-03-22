@@ -39,9 +39,9 @@ def main():
         rew = disc.DiscNetwork(
             sess, state_dim=[S_INFO, S_LEN], learning_rate=ACTOR_LR_RATE / 10.)
         #predictions = actor.out
-        sess.run(tf.initialize_all_variables())
-        #trainer = tf.train.Saver()
-        #trainer.restore(sess, "models/pretrain.ckpt")
+        #sess.run(tf.initialize_all_variables())
+        trainer = tf.train.Saver()
+        trainer.restore(sess, "pretrain/nn_model_ep_1.ckpt")
         # Train Generate Network
         network = tflearn.regression(actor.out, optimizer='adam', learning_rate=1e-4,
                                      loss='categorical_crossentropy', name='target')

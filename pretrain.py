@@ -25,11 +25,11 @@ class pretrain(object):
 
     def fromdata(self):
         _f = h5py.File(self.filename, 'r')
-        X = _f['realx']
-        Y = _f['realy']
-        V = _f['realv']
+        X = np.array(_f['realx'])
+        Y = np.array(_f['realy'])
+        V = np.array(_f['realv'])
         _f.close()
-        return np.array(X), np.array(Y), np.array(V)
+        return X, Y, V
 
     def __init__(self, sess, actor, critic, rew, filename='train.h5'):
         self.sess = sess
@@ -66,17 +66,17 @@ class pretrain(object):
         for i in range(epoch):
             # for i in self.
             _len = self.len
-            _idx = 0
+            idx = 0
             while(_len > 0):
                 _tmp_len = np.minimum(self.batch_size, _len)
                 _train_x = self.trainX[idx: idx+_tmp_len]
                 _train_y = self.trainY[idx: idx+_tmp_len]
                 self.sess.run(self.action_optimize, feed_dict={
-                    self.actor.input: _train_x,
+                    self.actor.inputs: _train_x,
                     self.action_ground: _train_y})
                 _len -= _tmp_len
                 idx += _tmp_len
-            print('[Pretrain] Generator:', i)
+            print('[Pretrain] Generator:' + str(i))
 
     def train_disc(self, epoch=15):
         np.random.seed(RANDOM_SEED)
@@ -151,7 +151,7 @@ class pretrain(object):
         v_s_batch = np.stack(s_batch, axis=0)
         for i in range(epoch):
             self.disc.train(v_s_batch)
-            print('[Pretrain] Discriminator:', i)
+            print('[Pretrain] Discriminator:' + str(i))
 
     def train_generator_v(self, epoch=15):
         np.random.seed(RANDOM_SEED)
@@ -170,6 +170,7 @@ class pretrain(object):
 
         s_batch = [np.zeros((S_INFO, S_LEN))]
         r_batch = []
+        S_batch = []
         V_batch = []
         video_count = 0
 
@@ -222,10 +223,15 @@ class pretrain(object):
                 last_bit_rate = DEFAULT_QUALITY
                 bit_rate = DEFAULT_QUALITY  # use the default action here
                 last_chunk_vmaf = None
+                
+                #print(len(r_batch), len(v_batch))
                 v_batch = a3c.discount(r_batch[:], 0.99)
+                S_batch += s_batch[1:]
                 V_batch += v_batch
-                #del s_batch[:]
+                
+                del s_batch[:]
                 del r_batch[:]
+                
                 action_vec = np.zeros(A_DIM)
                 action_vec[bit_rate] = 1
                 s_batch.append(np.zeros((S_INFO, S_LEN)))
@@ -234,19 +240,19 @@ class pretrain(object):
                 if video_count >= len(all_file_names):
                     break
 
-        v_s_batch = np.stack(s_batch, axis=0)
+        v_s_batch = np.stack(S_batch, axis=0)
         v_v_batch = np.vstack(V_batch)
         for i in range(epoch):
             # for i in self.
             _len = self.len
-            _idx = 0
+            idx = 0
             while(_len > 0):
                 _tmp_len = np.minimum(self.batch_size, _len)
                 _train_x = v_s_batch[idx: idx+_tmp_len]
                 _train_y = v_v_batch[idx: idx+_tmp_len]
-                self.sess.run(self.action_optimize, feed_dict={
-                    self.actor.input: _train_x,
-                    self.action_ground: _train_y})
+                self.sess.run(self.critic_optimize, feed_dict={
+                    self.critic.inputs: _train_x,
+                    self.critic_ground: _train_y})
                 _len -= _tmp_len
                 idx += _tmp_len
-            print('[Pretrain] Critic:', i)
+            print('[Pretrain] Critic:' + str(i))

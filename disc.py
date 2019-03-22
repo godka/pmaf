@@ -97,13 +97,16 @@ class DiscNetwork(object):
         # use trick: k>1
         sample_size = int(self.batch_size // 2)
         _index = 0
-        while(_index < inputs.shape[0]):
+        _len = inputs.shape[0]
+        while(_len > 0):
             sample_inputs = self.sample(sample_size)
+            tmp_len = np.minimum(sample_size, _len)
             self.sess.run(self.optimize, feed_dict={
                 self.fake_inputs: inputs[_index: _index + sample_size],
                 self.real_inputs: sample_inputs
             })
-            _index += sample_size
+            _index += tmp_len
+            _len -= tmp_len
 
     def generate_sample(self):
         #print('generating real data...')

@@ -119,7 +119,8 @@ def central_agent(net_params_queues, exp_queues):
             saver.restore(sess, nn_model)
             print("Model restored.")
         else:
-            _pretrain.train()
+            # actually I don't know when to stop.
+            _pretrain.train(50)
             saver.save(sess, 'pretrain/pretrain.ckpt') 
 
         epoch = 0
@@ -303,6 +304,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
             #d_batch.append(d_state)
             #trick,use gan loss.
             r_batch.append(np.log(reward))
+            #r_batch.append(reward)
 
             last_bit_rate = bit_rate
             last_chunk_vmaf = video_chunk_vmaf

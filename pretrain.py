@@ -58,7 +58,7 @@ class pretrain(object):
 
     def train(self, epoch=15):
         self.train_generator(epoch=epoch)
-        self.train_disc(epoch=epoch)
+        self.train_disc(epoch=epoch * 2)
         self.train_generator_v(epoch=epoch)
 
 
@@ -190,6 +190,7 @@ class pretrain(object):
             #d_batch.append(d_state)
             #trick,use gan loss.
             r_batch.append(np.log(reward))
+            #r_batch.append(reward)
 
             time_stamp += delay  # in ms
             time_stamp += sleep_time  # in ms

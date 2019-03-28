@@ -48,9 +48,9 @@ def main():
                                  state_dim=[S_INFO, S_LEN], action_dim=A_DIM,
                                  learning_rate=ACTOR_LR_RATE)
 
-        critic = a3c.CriticNetwork(sess,
-                                   state_dim=[S_INFO, S_LEN],
-                                   learning_rate=CRITIC_LR_RATE)
+        #critic = a3c.CriticNetwork(sess,
+        #                           state_dim=[S_INFO, S_LEN],
+        #                           learning_rate=CRITIC_LR_RATE)
 
         sess.run(tf.global_variables_initializer())
         saver = tf.train.Saver()  # save neural net parameters

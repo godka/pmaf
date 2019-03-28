@@ -117,7 +117,7 @@ def central_agent(net_params_queues, exp_queues):
             # synchronize the network parameters of work agent
             actor_net_params = actor.get_network_params()
             for i in range(NUM_AGENTS):
-                net_params_queues[i].put([actor_net_params])
+                net_params_queues[i].put(actor_net_params)
                 # Note: this is synchronous version of the parallel training,
                 # which is easier to understand and probe. The framework can be
                 # fairly easily modified to support asynchronous training.
@@ -146,7 +146,7 @@ def central_agent(net_params_queues, exp_queues):
                 actor_gradient_batch.append(actor_gradient)
 
                 total_reward += np.sum(r_batch)
-                total_td_loss += np.sum(td_batch)
+                #total_td_loss += np.sum(td_batch)
                 total_batch_len += len(r_batch)
                 total_agents += 1.0
                 total_entropy += np.sum(info['entropy'])
@@ -159,11 +159,11 @@ def central_agent(net_params_queues, exp_queues):
             # log training information
             epoch += 1
             avg_reward = total_reward / total_agents / 48.
-            avg_td_loss = total_td_loss / total_batch_len
+            avg_td_loss = 0. #total_td_loss / total_batch_len
             avg_entropy = total_entropy / total_batch_len
 
             logging.info('Epoch: ' + str(epoch) +
-                         ' TD_loss: ' + str(avg_td_loss) +
+                         #' TD_loss: ' + str(avg_td_loss) +
                          ' Avg_reward: ' + str(avg_reward) +
                          ' Avg_entropy: ' + str(avg_entropy))
 
@@ -211,13 +211,13 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
         actor = a3c.ActorNetwork(sess,
                                  state_dim=[S_INFO, S_LEN], action_dim=A_DIM,
                                  learning_rate=ACTOR_LR_RATE)
-        rew = disc.DiscNetwork(
-            sess, state_dim=[S_INFO, S_LEN], learning_rate=ACTOR_LR_RATE / 10.)
+        #rew = disc.DiscNetwork(
+        #    sess, state_dim=[S_INFO, S_LEN], learning_rate=ACTOR_LR_RATE / 10.)
         # initial synchronization of the network parameters from the coordinator
         actor_net_params = net_params_queue.get()
         actor.set_network_params(actor_net_params)
         #qoe_model.set_network_params(qoe_net_params)
-        rew.set_network_params(rew_net_params)
+        #rew.set_network_params(rew_net_params)
 
         last_bit_rate = DEFAULT_QUALITY
         bit_rate = DEFAULT_QUALITY
@@ -304,6 +304,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
                            str(rebuf) + '\t' +
                            str(video_chunk_size) + '\t' +
                            str(delay) + '\t' +
+                           str(VIDEO_BIT_RATE[action_real]) + '\t' +
                            str(reward) + '\n')
             log_file.flush()
 
@@ -323,6 +324,7 @@ def agent(agent_id, all_cooked_time, all_cooked_bw, net_params_queue, exp_queue)
                 del s_batch[:]
                 del a_batch[:]
                 del r_batch[:]
+                del a_r_batch[:]
                 #del d_batch[:]
                 del entropy_record[:]
 

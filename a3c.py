@@ -62,12 +62,13 @@ class ActorNetwork(object):
 
         # Compute the objective (log action_vector and entropy)
         self.real_out = tf.clip_by_value(self.out, 1e-6, 1.)
-        self.obj = tf.reduce_sum(tf.multiply(
-                       tf.log(tf.reduce_sum(tf.multiply(self.real_out, self.acts),
-                                            reduction_indices=1, keep_dims=True)),
-                       -self.act_grad_weights)) \
-                   + self.ENTROPY_WEIGHT * tf.reduce_sum(tf.multiply(self.real_out,
-                                                           tf.log(self.real_out + ENTROPY_EPS)))
+        self.obj = tflearn.objectives.categorical_crossentropy(self.real_out, self.acts)
+        # tf.reduce_sum(tf.multiply(
+        #                tf.log(tf.reduce_sum(tf.multiply(self.real_out, self.acts),
+        #                                     reduction_indices=1, keep_dims=True)),
+        #                -self.act_grad_weights)) \
+        #            + self.ENTROPY_WEIGHT * tf.reduce_sum(tf.multiply(self.real_out,
+        #                                                    tf.log(self.real_out + ENTROPY_EPS)))
 
         # Combine the gradients here
         self.actor_gradients = tf.gradients(self.obj, self.network_params)
@@ -116,12 +117,12 @@ class ActorNetwork(object):
             self.inputs: inputs
         })
 
-    def get_gradients(self, inputs, acts, act_grad_weights, epoch):
+    def get_gradients(self, inputs, acts):
         return self.sess.run(self.actor_gradients, feed_dict={
-            self.ENTROPY_WEIGHT: self.get_entropy(epoch),
+            #self.ENTROPY_WEIGHT: self.get_entropy(epoch),
             self.inputs: inputs,
-            self.acts: acts,
-            self.act_grad_weights: act_grad_weights
+            self.acts: acts
+            #self.act_grad_weights: act_grad_weights
         })
 
     def apply_gradients(self, actor_gradients):
